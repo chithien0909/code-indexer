@@ -164,30 +164,43 @@ func NewForUVX(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 	}
 
 	// Initialize components with uvx-friendly paths
+	logger.Debug("🗂️ Initializing repository manager...", zap.String("repo_dir", repoDir))
 	repoMgr, err := repository.NewManager(repoDir, logger)
 	if err != nil {
+		logger.Error("❌ Failed to initialize repository manager", zap.Error(err))
 		return nil, fmt.Errorf("failed to create repository manager: %w", err)
 	}
+	logger.Debug("✅ Repository manager initialized successfully")
 
+	logger.Debug("🔍 Initializing search engine...", zap.String("index_dir", indexDir))
 	searcher, err := search.NewEngine(indexDir, logger)
 	if err != nil {
+		logger.Error("❌ Failed to initialize search engine", zap.Error(err))
 		return nil, fmt.Errorf("failed to create search engine: %w", err)
 	}
+	logger.Debug("✅ Search engine initialized successfully")
 
+	logger.Debug("📇 Initializing code indexer...")
 	idx, err := indexer.New(cfg, repoMgr, searcher, logger)
 	if err != nil {
+		logger.Error("❌ Failed to initialize code indexer", zap.Error(err))
 		return nil, fmt.Errorf("failed to create indexer: %w", err)
 	}
+	logger.Debug("✅ Code indexer initialized successfully")
 
 	// Initialize models engine with safe defaults for uvx mode
 	// Force disable models for uvx to avoid initialization issues
 	cfg.Models.Enabled = false
+	logger.Debug("🤖 Initializing models engine...", zap.Bool("enabled", cfg.Models.Enabled))
 	modelsEngine, err := models.NewEngine(&cfg.Models, idx, logger)
 	if err != nil {
 		// In uvx mode, if models engine fails to initialize, create a disabled one
-		logger.Warn("Failed to create models engine, creating disabled instance", zap.Error(err))
+		logger.Warn("⚠️ Failed to create models engine, creating disabled instance", zap.Error(err))
 		disabledConfig := &config.ModelsConfig{Enabled: false}
 		modelsEngine, _ = models.NewEngine(disabledConfig, idx, logger)
+		logger.Debug("✅ Disabled models engine initialized successfully")
+	} else {
+		logger.Debug("✅ Models engine initialized successfully")
 	}
 
 	// For uvx mode, disable multi-session and multi-IDE features for simplicity
@@ -249,18 +262,20 @@ func (s *MCPServer) ServeStdio() error {
 
 // Serve starts the MCP server using stdio transport
 func (s *MCPServer) Serve() error {
-	s.logger.Info("Starting MCP server",
+	s.logger.Info("🚀 Starting MCP server",
 		zap.String("name", s.config.Server.Name),
 		zap.String("version", s.config.Server.Version))
 
-	s.logger.Debug("MCP server ready to accept connections via stdio")
-	s.logger.Debug("Server configuration",
+	s.logger.Info("📋 Server Configuration Summary",
 		zap.Bool("models_enabled", s.config.Models.Enabled),
 		zap.Bool("multi_session_enabled", s.config.Server.MultiSession.Enabled),
-		zap.Bool("multi_ide_enabled", s.config.Server.MultiIDE.Enabled))
+		zap.Bool("multi_ide_enabled", s.config.Server.MultiIDE.Enabled),
+		zap.String("transport", "stdio"),
+		zap.String("protocol_version", "2024-11-05"))
 
-	s.logger.Info("MCP server listening on stdio for JSON-RPC requests...")
-	s.logger.Info("Expected MCP protocol version: 2024-11-05")
+	s.logger.Info("📡 MCP server listening on stdio for JSON-RPC requests...")
+	s.logger.Info("✅ MCP server is ready to accept client connections")
+	s.logger.Info("🔗 Clients can now connect using MCP protocol version 2024-11-05")
 
 	return server.ServeStdio(s.server)
 }

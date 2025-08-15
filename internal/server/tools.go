@@ -9,36 +9,62 @@ import (
 
 // registerTools registers all MCP tools
 func (s *MCPServer) registerTools() error {
+	s.logger.Info("🔧 Starting tool registration process...")
+
 	// Register core indexing tools
+	s.logger.Info("📦 Registering core tools...")
 	if err := s.registerCoreTools(); err != nil {
+		s.logger.Error("❌ Failed to register core tools", zap.Error(err))
 		return fmt.Errorf("failed to register core tools: %w", err)
 	}
+	s.logger.Info("✅ Core tools registered successfully", zap.Int("count", 5))
 
 	// Register utility tools
+	s.logger.Info("🛠️ Registering utility tools...")
 	if err := s.registerUtilityTools(); err != nil {
+		s.logger.Error("❌ Failed to register utility tools", zap.Error(err))
 		return fmt.Errorf("failed to register utility tools: %w", err)
 	}
+	s.logger.Info("✅ Utility tools registered successfully", zap.Int("count", 11))
 
 	// Register project management tools
+	s.logger.Info("📋 Registering project management tools...")
 	if err := s.registerProjectTools(); err != nil {
+		s.logger.Error("❌ Failed to register project tools", zap.Error(err))
 		return fmt.Errorf("failed to register project tools: %w", err)
 	}
+	s.logger.Info("✅ Project management tools registered successfully", zap.Int("count", 5))
 
 	// Register session management tools if multi-session is enabled
 	if s.config.Server.MultiSession.Enabled {
+		s.logger.Info("👥 Registering session management tools...")
 		if err := s.registerSessionTools(); err != nil {
+			s.logger.Error("❌ Failed to register session tools", zap.Error(err))
 			return fmt.Errorf("failed to register session tools: %w", err)
 		}
+		s.logger.Info("✅ Session management tools registered successfully", zap.Int("count", 3))
+	} else {
+		s.logger.Info("👥 Session management tools disabled")
 	}
 
 	// Register AI model tools if enabled
-	if err := s.registerModelTools(); err != nil {
-		return fmt.Errorf("failed to register model tools: %w", err)
+	if s.config.Models.Enabled {
+		s.logger.Info("🤖 Registering AI model tools...")
+		if err := s.registerModelTools(); err != nil {
+			s.logger.Error("❌ Failed to register AI model tools", zap.Error(err))
+			return fmt.Errorf("failed to register model tools: %w", err)
+		}
+		s.logger.Info("✅ AI model tools registered successfully", zap.Int("count", 3))
+	} else {
+		s.logger.Info("🤖 AI model tools disabled")
+		if err := s.registerModelTools(); err != nil {
+			return fmt.Errorf("failed to register model tools: %w", err)
+		}
 	}
 
 	// Log detailed tool summary like daemon mode
 	s.logToolsSummary()
-	s.logger.Info("All MCP tools registered successfully")
+	s.logger.Info("🎉 All MCP tools registered successfully")
 	return nil
 }
 
@@ -117,16 +143,30 @@ func (s *MCPServer) logToolsSummary() {
 		tools = append(tools, sessionTools...)
 	}
 
-	// Log the summary in the same format as daemon mode
-	s.logger.Info("MCP Tools Summary",
+	// Log the summary in detailed format like Serena
+	s.logger.Info("📊 MCP Tools Summary",
 		zap.Any("categories", categories),
 		zap.Any("server_info", map[string]interface{}{
 			"name":          s.config.Server.Name,
 			"version":       s.config.Server.Version,
 			"multi_session": s.config.Server.MultiSession.Enabled,
+			"models":        s.config.Models.Enabled,
 		}),
 		zap.Any("tools", tools),
 		zap.Int("total", total))
+
+	// Log individual tool categories for better visibility
+	s.logger.Info("📦 Core Tools Available", zap.Int("count", categories["core"]))
+	s.logger.Info("🛠️ Utility Tools Available", zap.Int("count", categories["utility"]))
+	s.logger.Info("📋 Project Tools Available", zap.Int("count", categories["project"]))
+	if categories["ai"] > 0 {
+		s.logger.Info("🤖 AI Tools Available", zap.Int("count", categories["ai"]))
+	}
+	if categories["session"] > 0 {
+		s.logger.Info("👥 Session Tools Available", zap.Int("count", categories["session"]))
+	}
+
+	s.logger.Info("🎯 Total Tools Available", zap.Int("total", total))
 }
 
 // registerCoreTools registers core indexing and search tools

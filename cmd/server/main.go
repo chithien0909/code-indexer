@@ -114,19 +114,39 @@ func runMCPServer() error {
 	}
 	defer logger.Sync()
 
-	logger.Debug("Starting MCP Code Indexer (uvx mode)",
+	logger.Info("🚀 Starting MCP Code Indexer",
 		zap.String("version", "1.1.0"),
-		zap.String("log_level", cfg.Logging.Level),
-		zap.String("mode", "uvx-optimized"))
+		zap.String("mode", "stdio"),
+		zap.String("log_level", cfg.Logging.Level))
+
+	logger.Info("📋 Server Configuration",
+		zap.String("name", cfg.Server.Name),
+		zap.String("version", cfg.Server.Version),
+		zap.Bool("models_enabled", cfg.Models.Enabled),
+		zap.Bool("multi_session_enabled", cfg.Server.MultiSession.Enabled),
+		zap.Bool("multi_ide_enabled", cfg.Server.MultiIDE.Enabled),
+		zap.String("index_dir", cfg.Indexer.IndexDir),
+		zap.String("repo_dir", cfg.Indexer.RepoDir))
+
+	logger.Info("🔧 Initializing MCP server components...")
 
 	// Create MCP server with uvx optimizations
 	mcpServer, err := server.NewForUVX(cfg, logger)
 	if err != nil {
+		logger.Error("❌ Failed to create MCP server", zap.Error(err))
 		return fmt.Errorf("failed to create MCP server: %w", err)
 	}
 
-	logger.Info("MCP server ready, starting stdio communication...")
-	logger.Debug("Waiting for MCP protocol requests on stdin...")
+	logger.Info("✅ MCP server components initialized successfully")
+	logger.Info("🔌 MCP Protocol Configuration",
+		zap.String("protocol_version", "2024-11-05"),
+		zap.String("transport", "stdio"),
+		zap.Bool("tools_capability", true),
+		zap.Bool("resources_capability", false),
+		zap.Bool("prompts_capability", false))
+
+	logger.Info("📡 Starting MCP server on stdio transport...")
+	logger.Info("⏳ Waiting for MCP client connection...")
 
 	// Start server directly for better stdio handling
 	return mcpServer.ServeStdio()
