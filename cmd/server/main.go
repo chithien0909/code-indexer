@@ -18,6 +18,8 @@ import (
 var (
 	configPath string
 	logLevel   string
+	port       int
+	host       string
 )
 
 func main() {
@@ -34,6 +36,7 @@ repositories and provides powerful search capabilities for LLM applications.`,
 
 	// Add commands
 	rootCmd.AddCommand(serveCmd())
+	rootCmd.AddCommand(daemonCmd())
 	rootCmd.AddCommand(versionCmd())
 
 	if err := rootCmd.Execute(); err != nil {
@@ -51,6 +54,23 @@ func serveCmd() *cobra.Command {
 			return runServer()
 		},
 	}
+}
+
+func daemonCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "daemon",
+		Short: "Start the MCP server as a daemon",
+		Long:  "Start the MCP server as a background daemon listening on TCP port for multiple VSCode instances",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runDaemon()
+		},
+	}
+
+	// Add daemon-specific flags
+	cmd.Flags().IntVarP(&port, "port", "p", 8080, "Port to listen on")
+	cmd.Flags().StringVarP(&host, "host", "H", "localhost", "Host to bind to")
+
+	return cmd
 }
 
 func versionCmd() *cobra.Command {
@@ -123,6 +143,74 @@ func runServer() error {
 	case err := <-serverErr:
 		if err != nil {
 			logger.Error("Server error", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+}
+
+func runDaemon() error {
+	// Load configuration
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Override log level if specified
+	if logLevel != "" {
+		cfg.Logging.Level = logLevel
+	}
+
+	// Initialize logger
+	logger, err := initLogger(cfg.Logging)
+	if err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
+	}
+	defer logger.Sync()
+
+	logger.Info("Starting MCP Code Indexer Daemon",
+		zap.String("version", "1.0.0"),
+		zap.String("host", host),
+		zap.Int("port", port),
+		zap.String("log_level", cfg.Logging.Level))
+
+	// Create MCP server
+	mcpServer, err := server.New(cfg, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create MCP server: %w", err)
+	}
+
+	// Setup graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle shutdown signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		logger.Info("Received shutdown signal", zap.String("signal", sig.String()))
+		cancel()
+	}()
+
+	// Start daemon server in a goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- mcpServer.ServeDaemon(host, port)
+	}()
+
+	// Wait for shutdown signal or server error
+	select {
+	case <-ctx.Done():
+		logger.Info("Shutting down daemon...")
+		if err := mcpServer.Close(); err != nil {
+			logger.Error("Error during daemon shutdown", zap.Error(err))
+		}
+		return nil
+	case err := <-serverErr:
+		if err != nil {
+			logger.Error("Daemon error", zap.Error(err))
 			return err
 		}
 		return nil

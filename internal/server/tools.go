@@ -24,6 +24,13 @@ func (s *MCPServer) registerTools() error {
 		return fmt.Errorf("failed to register project tools: %w", err)
 	}
 
+	// Register session management tools if multi-session is enabled
+	if s.config.Server.MultiSession.Enabled {
+		if err := s.registerSessionTools(); err != nil {
+			return fmt.Errorf("failed to register session tools: %w", err)
+		}
+	}
+
 	// Register AI model tools if enabled
 	if err := s.registerModelTools(); err != nil {
 		return fmt.Errorf("failed to register model tools: %w", err)
@@ -47,7 +54,12 @@ func (s *MCPServer) registerCoreTools() error {
 			mcp.Description("Custom name for the repository (optional)"),
 		),
 	)
-	s.server.AddTool(indexRepoTool, s.handleIndexRepository)
+	// Use session-aware handler if multi-session is enabled
+	if s.config.Server.MultiSession.Enabled {
+		s.server.AddTool(indexRepoTool, s.wrapWithSession(s.handleIndexRepositorySession))
+	} else {
+		s.server.AddTool(indexRepoTool, s.handleIndexRepository)
+	}
 
 	// Search Code Tool
 	searchCodeTool := mcp.NewTool("search_code",
@@ -353,6 +365,39 @@ func (s *MCPServer) registerProjectTools() error {
 	s.server.AddTool(summarizeChangesTool, s.handleSummarizeChanges)
 
 	s.logger.Info("Project management tools registered successfully", zap.Int("tool_count", 5))
+	return nil
+}
+
+// registerSessionTools registers session management tools with the MCP server
+func (s *MCPServer) registerSessionTools() error {
+	s.logger.Info("Registering session management tools...")
+
+	// List Sessions Tool
+	listSessionsTool := mcp.NewTool("list_sessions",
+		mcp.WithDescription("List all active VSCode IDE sessions"),
+	)
+	s.server.AddTool(listSessionsTool, s.wrapWithSession(s.handleListSessions))
+
+	// Create Session Tool
+	createSessionTool := mcp.NewTool("create_session",
+		mcp.WithDescription("Create a new VSCode IDE session"),
+		mcp.WithString("name",
+			mcp.Required(),
+			mcp.Description("Name for the new session"),
+		),
+		mcp.WithString("workspace_dir",
+			mcp.Description("Workspace directory for the session (optional)"),
+		),
+	)
+	s.server.AddTool(createSessionTool, s.wrapWithSession(s.handleCreateSession))
+
+	// Get Session Info Tool
+	getSessionInfoTool := mcp.NewTool("get_session_info",
+		mcp.WithDescription("Get information about the current session and multi-session configuration"),
+	)
+	s.server.AddTool(getSessionInfoTool, s.wrapWithSession(s.handleGetSessionInfo))
+
+	s.logger.Info("Session management tools registered successfully", zap.Int("tool_count", 3))
 	return nil
 }
 

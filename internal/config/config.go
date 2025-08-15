@@ -36,9 +36,20 @@ type SearchConfig struct {
 
 // ServerConfig represents server-specific configuration
 type ServerConfig struct {
-	Name           string `mapstructure:"name"`
-	Version        string `mapstructure:"version"`
-	EnableRecovery bool   `mapstructure:"enable_recovery"`
+	Name           string        `mapstructure:"name"`
+	Version        string        `mapstructure:"version"`
+	EnableRecovery bool          `mapstructure:"enable_recovery"`
+	MultiSession   MultiSessionConfig `mapstructure:"multi_session"`
+}
+
+// MultiSessionConfig represents multi-session configuration
+type MultiSessionConfig struct {
+	Enabled                bool          `mapstructure:"enabled"`
+	MaxSessions           int           `mapstructure:"max_sessions"`
+	SessionTimeoutMinutes int           `mapstructure:"session_timeout_minutes"`
+	CleanupIntervalMinutes int          `mapstructure:"cleanup_interval_minutes"`
+	IsolateWorkspaces     bool          `mapstructure:"isolate_workspaces"`
+	SharedIndexing        bool          `mapstructure:"shared_indexing"`
 }
 
 // LoggingConfig represents logging configuration
@@ -150,6 +161,14 @@ func DefaultConfig() *Config {
 			Name:           "Code Indexer",
 			Version:        "1.0.0",
 			EnableRecovery: true,
+			MultiSession: MultiSessionConfig{
+				Enabled:                true,
+				MaxSessions:           10,
+				SessionTimeoutMinutes: 120, // 2 hours
+				CleanupIntervalMinutes: 30,  // 30 minutes
+				IsolateWorkspaces:     true,
+				SharedIndexing:        true,
+			},
 		},
 		Logging: LoggingConfig{
 			Level:      "info",
@@ -284,6 +303,19 @@ func (c *Config) Validate() error {
 	}
 	if !validLevels[c.Logging.Level] {
 		c.Logging.Level = "info"
+	}
+
+	// Validate multi-session configuration
+	if c.Server.MultiSession.Enabled {
+		if c.Server.MultiSession.MaxSessions <= 0 {
+			c.Server.MultiSession.MaxSessions = 10
+		}
+		if c.Server.MultiSession.SessionTimeoutMinutes <= 0 {
+			c.Server.MultiSession.SessionTimeoutMinutes = 120
+		}
+		if c.Server.MultiSession.CleanupIntervalMinutes <= 0 {
+			c.Server.MultiSession.CleanupIntervalMinutes = 30
+		}
 	}
 
 	// Validate Models configuration

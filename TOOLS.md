@@ -2,7 +2,7 @@
 
 This document describes all the available tools in the MCP Code Indexer server. All tools are now fully integrated with the MCP framework and use real indexing, search, and file system operations.
 
-## 🛠️ **Available Tools (24 Total) - Fully MCP Integrated**
+## 🛠️ **Available Tools (27 Total) - Fully MCP Integrated**
 
 ## ✨ **MCP Integration Features**
 
@@ -278,9 +278,43 @@ Get guidelines for change summarization
 Learn best practices for documenting modifications
 ```
 
+### **Session Management Tools (3)**
+
+#### 25. `list_sessions`
+**Description:** List all active VSCode IDE sessions
+**Parameters:** None
+
+**Example Usage:**
+```
+Show all active VSCode sessions
+List current IDE instances
+```
+
+#### 26. `create_session`
+**Description:** Create a new VSCode IDE session
+**Parameters:**
+- `name` (required): Name for the new session
+- `workspace_dir` (optional): Workspace directory for the session
+
+**Example Usage:**
+```
+Create a new session called 'frontend-dev'
+Start a new IDE session for /path/to/project
+```
+
+#### 27. `get_session_info`
+**Description:** Get information about the current session and multi-session configuration
+**Parameters:** None
+
+**Example Usage:**
+```
+Show current session information
+Get multi-session configuration details
+```
+
 ### **AI Model Tools (3)**
 
-#### 22. `generate_code`
+#### 25. `generate_code`
 **Description:** Generate code from natural language description using AI
 **Parameters:**
 - `prompt` (required): Natural language description of what the code should do
@@ -293,7 +327,7 @@ Create a Python class for data processing
 Write a JavaScript async function for API calls
 ```
 
-#### 23. `analyze_code`
+#### 26. `analyze_code`
 **Description:** Analyze code quality and get suggestions using AI
 **Parameters:**
 - `code` (required): Code to analyze
@@ -306,7 +340,7 @@ Check this Python class for improvements
 Review this JavaScript code for best practices
 ```
 
-#### 24. `explain_code`
+#### 27. `explain_code`
 **Description:** Get AI explanation of code functionality
 **Parameters:**
 - `code` (required): Code to explain
@@ -377,8 +411,9 @@ models:
 | **Core Indexing** | 5 | Repository indexing and basic search |
 | **Utility** | 11 | File operations, symbol finding, file manipulation, and advanced code intelligence |
 | **Project Management** | 5 | Configuration, instructions, and project management |
+| **Session Management** | 3 | Multi-session support and VSCode instance management |
 | **AI Models** | 3 | Code generation, analysis, and explanation |
-| **Total** | **24** | **Complete code intelligence and management toolkit** |
+| **Total** | **27** | **Complete multi-session code intelligence toolkit** |
 
 ## 🎯 **Next Steps**
 

@@ -1,0 +1,78 @@
+{
+  "// Multi-Session MCP Configuration for VSCode": "This configuration allows multiple VSCode instances to connect to a single MCP Code Indexer daemon",
+  
+  "// Step 1: Start the daemon server": "Run: ./bin/code-indexer daemon --port 8080 --host localhost",
+  
+  "// Step 2: Use this configuration in each VSCode instance": "",
+  "mcpServers": {
+    "CodeIndexer": {
+      "command": "node",
+      "args": [
+        "/path/to/mcp-http-client.js",
+        "http://localhost:8080"
+      ]
+    }
+  },
+  
+  "// Alternative: Direct HTTP API usage": "You can also make direct HTTP calls to the daemon",
+  "// Example API endpoints": {
+    "health": "GET http://localhost:8080/api/health",
+    "tools": "GET http://localhost:8080/api/tools", 
+    "sessions": "GET http://localhost:8080/api/sessions",
+    "call_tool": "POST http://localhost:8080/api/call"
+  },
+  
+  "// Multi-session benefits": [
+    "Single daemon serves multiple VSCode instances",
+    "Efficient resource sharing across sessions",
+    "Session isolation with workspace contexts",
+    "27 powerful tools available to all instances",
+    "Real-time session management",
+    "Automatic session cleanup"
+  ],
+  
+  "// Available tool categories": {
+    "core": 5,
+    "utility": 11, 
+    "project": 5,
+    "session": 3,
+    "ai": 3,
+    "total": 27
+  },
+  
+  "// Session management tools": [
+    "list_sessions - List all active VSCode IDE sessions",
+    "create_session - Create a new VSCode IDE session", 
+    "get_session_info - Get current session information"
+  ],
+  
+  "// Example usage scenarios": {
+    "scenario_1": {
+      "description": "Multiple projects",
+      "vscode_instance_1": "Frontend React project",
+      "vscode_instance_2": "Backend Node.js API", 
+      "vscode_instance_3": "Mobile React Native app",
+      "benefit": "Each instance maintains its own workspace context"
+    },
+    "scenario_2": {
+      "description": "Team collaboration",
+      "developer_a": "Feature branch development",
+      "developer_b": "Bug fixing on main branch",
+      "developer_c": "Code review and documentation", 
+      "benefit": "Multiple developers use shared server with isolated sessions"
+    },
+    "scenario_3": {
+      "description": "Multi-language development",
+      "session_1": "Python data processing",
+      "session_2": "Go microservices",
+      "session_3": "TypeScript frontend",
+      "benefit": "Language-specific configurations per session"
+    }
+  },
+  
+  "// Production deployment": {
+    "systemd_service": "/etc/systemd/system/mcp-code-indexer.service",
+    "docker_container": "docker run -p 8080:8080 mcp-code-indexer:latest daemon",
+    "load_balancer": "Multiple daemon instances for high availability"
+  }
+}

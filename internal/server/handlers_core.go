@@ -8,6 +8,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"go.uber.org/zap"
 
+	"github.com/my-mcp/code-indexer/internal/session"
 	"github.com/my-mcp/code-indexer/pkg/types"
 )
 
@@ -35,6 +36,43 @@ func (s *MCPServer) handleIndexRepository(ctx context.Context, request mcp.CallT
 		"success":    true,
 		"repository": repo,
 		"message":    "Repository indexed successfully",
+	}
+
+	resultJSON, _ := json.Marshal(result)
+	return mcp.NewToolResultText(string(resultJSON)), nil
+}
+
+// handleIndexRepositorySession handles session-aware repository indexing requests
+func (s *MCPServer) handleIndexRepositorySession(ctx context.Context, request *session.SessionAwareRequest) (*mcp.CallToolResult, error) {
+	path, err := request.Request.RequireString("path")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid path parameter: %v", err)), nil
+	}
+
+	name := request.Request.GetString("name", "")
+
+	// Resolve path relative to session workspace if needed
+	resolvedPath := request.ResolvePath(path)
+
+	s.logger.Info("Indexing repository (session-aware)",
+		zap.String("path", path),
+		zap.String("resolved_path", resolvedPath),
+		zap.String("name", name),
+		zap.String("session_id", request.Session.ID))
+
+	// Index the repository using session-specific configuration
+	repo, err := s.indexer.IndexRepository(ctx, resolvedPath, name)
+	if err != nil {
+		s.logger.Error("Failed to index repository", zap.Error(err))
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to index repository: %v", err)), nil
+	}
+
+	result := map[string]interface{}{
+		"success":    true,
+		"repository": repo,
+		"message":    "Repository indexed successfully",
+		"session_id": request.Session.ID,
+		"workspace":  request.Session.WorkspaceDir,
 	}
 
 	resultJSON, _ := json.Marshal(result)
