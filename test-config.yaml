@@ -1,0 +1,54 @@
+server:
+  name: "Code Indexer"
+  version: "1.1.0"
+  enable_recovery: true
+  multi_session:
+    enabled: false
+  multi_ide:
+    enabled: false
+
+indexer:
+  supported_extensions:
+    - .go
+    - .py
+    - .js
+    - .ts
+    - .java
+    - .cpp
+    - .c
+    - .h
+    - .rs
+    - .rb
+    - .php
+    - .cs
+    - .kt
+    - .swift
+  max_file_size: 10485760
+  exclude_patterns:
+    - "*/node_modules/*"
+    - "*/vendor/*"
+    - "*/.git/*"
+    - "*/build/*"
+    - "*/dist/*"
+    - "*/target/*"
+    - "*/__pycache__/*"
+  index_dir: "./index"
+  repo_dir: "./repositories"
+
+search:
+  max_results: 100
+  highlight_snippets: true
+  snippet_length: 200
+  fuzzy_tolerance: 0.2
+
+logging:
+  level: debug
+  file: ""
+  json_format: false
+
+models:
+  enabled: false
+  default_model: "disabled"
+  models_dir: "./models"
+  max_tokens: 2048
+  temperature: 0.7

@@ -180,6 +180,8 @@ func NewForUVX(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 	}
 
 	// Initialize models engine with safe defaults for uvx mode
+	// Force disable models for uvx to avoid initialization issues
+	cfg.Models.Enabled = false
 	modelsEngine, err := models.NewEngine(&cfg.Models, idx, logger)
 	if err != nil {
 		// In uvx mode, if models engine fails to initialize, create a disabled one

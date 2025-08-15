@@ -36,6 +36,7 @@ func (s *MCPServer) registerTools() error {
 		return fmt.Errorf("failed to register model tools: %w", err)
 	}
 
+	s.logger.Info("All MCP tools registered successfully")
 	return nil
 }
 
@@ -60,6 +61,7 @@ func (s *MCPServer) registerCoreTools() error {
 	} else {
 		s.server.AddTool(indexRepoTool, s.handleIndexRepository)
 	}
+	s.logger.Debug("Registered tool: index_repository")
 
 	// Search Code Tool
 	searchCodeTool := mcp.NewTool("search_code",

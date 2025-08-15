@@ -179,6 +179,15 @@ func runServer() error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
+	// Force safe defaults for uvx mode
+	cfg.Models.Enabled = false
+	if cfg.Server.MultiSession.Enabled {
+		cfg.Server.MultiSession.Enabled = false
+	}
+	if cfg.Server.MultiIDE.Enabled {
+		cfg.Server.MultiIDE.Enabled = false
+	}
+
 	// Override log level if specified
 	if logLevel != "" {
 		cfg.Logging.Level = logLevel
