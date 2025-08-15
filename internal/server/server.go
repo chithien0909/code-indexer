@@ -236,6 +236,8 @@ func (s *MCPServer) Serve() error {
 	s.logger.Info("Starting MCP server",
 		zap.String("name", s.config.Server.Name),
 		zap.String("version", s.config.Server.Version))
+
+	s.logger.Debug("MCP server ready to accept connections via stdio")
 	return server.ServeStdio(s.server)
 }
 
