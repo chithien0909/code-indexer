@@ -1,0 +1,110 @@
+indexer:
+  # Supported file extensions for indexing
+  supported_extensions:
+    - .go
+    - .py
+    - .js
+    - .ts
+    - .java
+    - .cpp
+    - .c
+    - .h
+    - .hpp
+    - .rs
+    - .rb
+    - .php
+    - .cs
+    - .kt
+    - .swift
+    - .scala
+    - .clj
+    - .hs
+    - .ml
+    - .sh
+    - .bash
+    - .zsh
+    - .fish
+    - .ps1
+    - .sql
+    - .r
+    - .m
+    - .dart
+    - .lua
+    - .perl
+    - .pl
+
+  # Maximum file size to index (in bytes)
+  max_file_size: 1048576  # 1MB
+
+  # Patterns to exclude from indexing
+  exclude_patterns:
+    - "*/node_modules/*"
+    - "*/vendor/*"
+    - "*/.git/*"
+    - "*/build/*"
+    - "*/dist/*"
+    - "*/target/*"
+    - "*/__pycache__/*"
+    - "*.pyc"
+    - "*.class"
+    - "*.jar"
+    - "*.war"
+    - "*.ear"
+    - "*.exe"
+    - "*.dll"
+    - "*.so"
+    - "*.dylib"
+    - "*.a"
+    - "*.lib"
+    - "*.o"
+    - "*.obj"
+    - "*.min.js"
+    - "*.min.css"
+
+  # Index storage directory
+  index_dir: "./index"
+
+  # Repository storage directory for cloned repos
+  repo_dir: "./repositories"
+
+search:
+  # Maximum number of search results to return
+  max_results: 100
+
+  # Enable highlighting of search terms in results
+  highlight_snippets: true
+
+  # Maximum length of code snippets in results
+  snippet_length: 200
+
+  # Fuzzy search tolerance (0.0 = exact match, 1.0 = very fuzzy)
+  fuzzy_tolerance: 0.2
+
+server:
+  # Server name for MCP protocol
+  name: "Code Indexer"
+  
+  # Server version
+  version: "1.0.0"
+
+  # Enable recovery middleware for panic handling
+  enable_recovery: true
+
+logging:
+  # Log level: debug, info, warn, error
+  level: info
+
+  # Log file path (empty for stdout only)
+  file: "indexer.log"
+
+  # Enable structured JSON logging
+  json_format: false
+
+  # Maximum log file size in MB before rotation
+  max_size: 100
+
+  # Maximum number of old log files to retain
+  max_backups: 3
+
+  # Maximum age in days to retain log files
+  max_age: 30
