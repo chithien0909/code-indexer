@@ -238,6 +238,11 @@ func (s *MCPServer) Serve() error {
 		zap.String("version", s.config.Server.Version))
 
 	s.logger.Debug("MCP server ready to accept connections via stdio")
+	s.logger.Debug("Server configuration",
+		zap.Bool("models_enabled", s.config.Models.Enabled),
+		zap.Bool("multi_session_enabled", s.config.Server.MultiSession.Enabled),
+		zap.Bool("multi_ide_enabled", s.config.Server.MultiIDE.Enabled))
+
 	return server.ServeStdio(s.server)
 }
 

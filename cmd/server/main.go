@@ -126,6 +126,7 @@ func runMCPServer() error {
 	}
 
 	logger.Info("MCP server ready, starting stdio communication...")
+	logger.Debug("Waiting for MCP protocol requests on stdin...")
 
 	// Start server directly for better stdio handling
 	return mcpServer.ServeStdio()

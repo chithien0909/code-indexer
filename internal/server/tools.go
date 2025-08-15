@@ -36,8 +36,97 @@ func (s *MCPServer) registerTools() error {
 		return fmt.Errorf("failed to register model tools: %w", err)
 	}
 
+	// Log detailed tool summary like daemon mode
+	s.logToolsSummary()
 	s.logger.Info("All MCP tools registered successfully")
 	return nil
+}
+
+// logToolsSummary logs a detailed summary of all registered tools
+func (s *MCPServer) logToolsSummary() {
+	// Count tools by category
+	categories := map[string]int{
+		"core":    5,
+		"utility": 11,
+		"project": 5,
+		"ai":      0, // Will be 3 if models enabled
+		"session": 0, // Will be 3 if multi-session enabled
+	}
+
+	// Adjust counts based on enabled features
+	if s.config.Models.Enabled {
+		categories["ai"] = 3
+	}
+	if s.config.Server.MultiSession.Enabled {
+		categories["session"] = 3
+	}
+
+	// Calculate total
+	total := 0
+	for _, count := range categories {
+		total += count
+	}
+
+	// Create tools list for detailed logging
+	tools := []map[string]string{
+		// Core tools
+		{"category": "core", "name": "index_repository", "description": "Index a Git repository for searching"},
+		{"category": "core", "name": "search_code", "description": "Search across all indexed repositories"},
+		{"category": "core", "name": "get_metadata", "description": "Get detailed metadata for specific files"},
+		{"category": "core", "name": "list_repositories", "description": "List all indexed repositories with statistics"},
+		{"category": "core", "name": "get_index_stats", "description": "Get indexing statistics and information"},
+
+		// Utility tools
+		{"category": "utility", "name": "find_files", "description": "Find files matching patterns with wildcards"},
+		{"category": "utility", "name": "find_symbols", "description": "Find symbols (functions, classes, variables) by name"},
+		{"category": "utility", "name": "get_file_content", "description": "Get full content of specific files with line ranges"},
+		{"category": "utility", "name": "list_directory", "description": "List files and directories in specific paths"},
+		{"category": "utility", "name": "delete_lines", "description": "Delete a range of lines within a file"},
+		{"category": "utility", "name": "insert_at_line", "description": "Insert content at a given line in a file"},
+		{"category": "utility", "name": "replace_lines", "description": "Replace a range of lines with new content"},
+		{"category": "utility", "name": "get_file_snippet", "description": "Extract a specific code snippet from a file"},
+		{"category": "utility", "name": "find_references", "description": "Find all references to a symbol across indexed repositories"},
+		{"category": "utility", "name": "refresh_index", "description": "Refresh the search index for specific repositories or all repositories"},
+		{"category": "utility", "name": "git_blame", "description": "Get Git blame information for a specific file or file range"},
+
+		// Project tools
+		{"category": "project", "name": "get_current_config", "description": "Get the current configuration of the agent"},
+		{"category": "project", "name": "initial_instructions", "description": "Get the initial instructions for the current project"},
+		{"category": "project", "name": "remove_project", "description": "Remove a project from the configuration"},
+		{"category": "project", "name": "restart_language_server", "description": "Restart the language server"},
+		{"category": "project", "name": "summarize_changes", "description": "Provide instructions for summarizing codebase changes"},
+	}
+
+	// Add AI tools if enabled
+	if s.config.Models.Enabled {
+		aiTools := []map[string]string{
+			{"category": "ai", "name": "generate_code", "description": "Generate code from natural language descriptions using AI"},
+			{"category": "ai", "name": "analyze_code", "description": "Analyze code quality and get AI suggestions"},
+			{"category": "ai", "name": "explain_code", "description": "Get AI explanations of code functionality"},
+		}
+		tools = append(tools, aiTools...)
+	}
+
+	// Add session tools if enabled
+	if s.config.Server.MultiSession.Enabled {
+		sessionTools := []map[string]string{
+			{"category": "session", "name": "list_sessions", "description": "List all active VSCode IDE sessions"},
+			{"category": "session", "name": "create_session", "description": "Create a new VSCode IDE session"},
+			{"category": "session", "name": "get_session_info", "description": "Get information about the current session"},
+		}
+		tools = append(tools, sessionTools...)
+	}
+
+	// Log the summary in the same format as daemon mode
+	s.logger.Info("MCP Tools Summary",
+		zap.Any("categories", categories),
+		zap.Any("server_info", map[string]interface{}{
+			"name":          s.config.Server.Name,
+			"version":       s.config.Server.Version,
+			"multi_session": s.config.Server.MultiSession.Enabled,
+		}),
+		zap.Any("tools", tools),
+		zap.Int("total", total))
 }
 
 // registerCoreTools registers core indexing and search tools
