@@ -62,9 +62,117 @@ def main() -> int:
         if not args:
             args = ["serve"]
 
-        # Run the binary directly - let it handle MCP protocol
-        result = run_code_indexer(args)
-        return result.returncode
+        # For serve command, use stdio bridge for better IDE compatibility
+        if args[0] == "serve":
+            # Use stdio bridge that converts MCP stdio to daemon HTTP calls
+            bridge_code = '''
+import json
+import sys
+import subprocess
+import time
+import urllib.request
+import urllib.parse
+import urllib.error
+import signal
+import os
+
+class MCPStdioBridge:
+    def __init__(self):
+        self.daemon_process = None
+        self.daemon_port = 9991
+        self.daemon_url = f"http://localhost:{self.daemon_port}"
+
+    def start_daemon(self):
+        try:
+            cmd = ["''' + get_binary_path() + '''", "daemon", "--port", str(self.daemon_port)]
+            self.daemon_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            for i in range(60):
+                try:
+                    req = urllib.request.Request(f"{self.daemon_url}/api/health")
+                    with urllib.request.urlopen(req, timeout=1) as response:
+                        if response.status == 200:
+                            return True
+                except:
+                    time.sleep(0.5)
+            return False
+        except:
+            return False
+
+    def stop_daemon(self):
+        if self.daemon_process:
+            self.daemon_process.terminate()
+            try:
+                self.daemon_process.wait(timeout=5)
+            except:
+                self.daemon_process.kill()
+
+    def http_request(self, url, data=None):
+        try:
+            req = urllib.request.Request(url)
+            if data:
+                req.add_header("Content-Type", "application/json")
+                req.data = data
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return json.loads(response.read().decode())
+        except Exception as e:
+            return {"error": str(e)}
+
+    def handle_request(self, request):
+        method = request.get("method")
+        if method == "initialize":
+            return {"jsonrpc": "2.0", "id": request.get("id"), "result": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "Code Indexer", "version": "1.1.0"}}}
+        elif method == "tools/list":
+            try:
+                tools_data = self.http_request(f"{self.daemon_url}/api/tools")
+                tools = tools_data.get("tools", [])
+                return {"jsonrpc": "2.0", "id": request.get("id"), "result": {"tools": tools}}
+            except:
+                return {"jsonrpc": "2.0", "id": request.get("id"), "result": {"tools": []}}
+        elif method == "tools/call":
+            try:
+                params = request.get("params", {})
+                call_data = {"tool": params.get("name"), "arguments": params.get("arguments", {})}
+                result_data = self.http_request(f"{self.daemon_url}/api/call", json.dumps(call_data).encode())
+                return {"jsonrpc": "2.0", "id": request.get("id"), "result": {"content": [{"type": "text", "text": json.dumps(result_data.get("result", {}), indent=2)}]}}
+            except Exception as e:
+                return {"jsonrpc": "2.0", "id": request.get("id"), "error": {"code": -32603, "message": f"Tool call failed: {e}"}}
+        else:
+            return {"jsonrpc": "2.0", "id": request.get("id"), "error": {"code": -32601, "message": f"Method not found: {method}"}}
+
+    def run(self):
+        signal.signal(signal.SIGINT, lambda s, f: self.stop_daemon())
+        signal.signal(signal.SIGTERM, lambda s, f: self.stop_daemon())
+
+        if not self.start_daemon():
+            return 1
+
+        try:
+            for line in sys.stdin:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    request = json.loads(line)
+                    response = self.handle_request(request)
+                    print(json.dumps(response))
+                    sys.stdout.flush()
+                except:
+                    continue
+        finally:
+            self.stop_daemon()
+        return 0
+
+bridge = MCPStdioBridge()
+sys.exit(bridge.run())
+'''
+            # Execute the bridge code
+            exec(bridge_code)
+            return 0
+        else:
+            # For other commands, run directly
+            result = run_code_indexer(args)
+            return result.returncode
 
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
