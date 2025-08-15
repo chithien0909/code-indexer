@@ -6,37 +6,84 @@ import (
 
 // Repository represents a Git repository that has been indexed
 type Repository struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Path        string    `json:"path"`
-	URL         string    `json:"url,omitempty"`
-	IndexedAt   time.Time `json:"indexed_at"`
-	FileCount   int       `json:"file_count"`
-	TotalLines  int       `json:"total_lines"`
-	Languages   []string  `json:"languages"`
-	LastCommit  string    `json:"last_commit,omitempty"`
-	Branch      string    `json:"branch,omitempty"`
+	ID              string            `json:"id"`
+	Name            string            `json:"name"`
+	Path            string            `json:"path"`
+	URL             string            `json:"url,omitempty"`
+	IndexedAt       time.Time         `json:"indexed_at"`
+	FileCount       int               `json:"file_count"`
+	TotalLines      int               `json:"total_lines"`
+	Languages       []string          `json:"languages"`
+	LastCommit      string            `json:"last_commit,omitempty"`
+	Branch          string            `json:"branch,omitempty"`
+	LastIndexedHash string            `json:"last_indexed_hash,omitempty"`
+	Submodules      []Submodule       `json:"submodules,omitempty"`
+	IndexingMode    string            `json:"indexing_mode,omitempty"` // "full", "incremental", "sparse"
+	SparsePatterns  []string          `json:"sparse_patterns,omitempty"`
+	CommitHistory   []CommitInfo      `json:"commit_history,omitempty"`
+}
+
+// Submodule represents a Git submodule
+type Submodule struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	URL    string `json:"url"`
+	Hash   string `json:"hash"`
+	Branch string `json:"branch,omitempty"`
+}
+
+// CommitInfo represents information about a Git commit
+type CommitInfo struct {
+	Hash      string    `json:"hash"`
+	Message   string    `json:"message"`
+	Author    string    `json:"author"`
+	Email     string    `json:"email"`
+	Date      time.Time `json:"date"`
+	Files     []string  `json:"files,omitempty"`
+}
+
+// IncrementalIndexRequest represents a request for incremental indexing
+type IncrementalIndexRequest struct {
+	RepositoryID string `json:"repository_id"`
+	FromCommit   string `json:"from_commit,omitempty"`
+	ToCommit     string `json:"to_commit,omitempty"`
+	ForceRebuild bool   `json:"force_rebuild,omitempty"`
+}
+
+// CodeChunk represents a semantic chunk of code
+type CodeChunk struct {
+	ID           string                 `json:"id"`
+	FileID       string                 `json:"file_id"`
+	Type         string                 `json:"type"` // "function", "class", "method", "block"
+	Name         string                 `json:"name,omitempty"`
+	StartLine    int                    `json:"start_line"`
+	EndLine      int                    `json:"end_line"`
+	Content      string                 `json:"content"`
+	Context      map[string]interface{} `json:"context,omitempty"`
+	Dependencies []string               `json:"dependencies,omitempty"`
 }
 
 // CodeFile represents a source code file with its metadata
 type CodeFile struct {
-	ID           string     `json:"id"`
-	RepositoryID string     `json:"repository_id"`
-	Path         string     `json:"path"`
-	RelativePath string     `json:"relative_path"`
-	Language     string     `json:"language"`
-	Extension    string     `json:"extension"`
-	Size         int64      `json:"size"`
-	Lines        int        `json:"lines"`
-	Content      string     `json:"content,omitempty"`
-	Hash         string     `json:"hash"`
-	ModifiedAt   time.Time  `json:"modified_at"`
-	IndexedAt    time.Time  `json:"indexed_at"`
-	Functions    []Function `json:"functions,omitempty"`
-	Classes      []Class    `json:"classes,omitempty"`
-	Variables    []Variable `json:"variables,omitempty"`
-	Imports      []Import   `json:"imports,omitempty"`
-	Comments     []Comment  `json:"comments,omitempty"`
+	ID           string      `json:"id"`
+	RepositoryID string      `json:"repository_id"`
+	Path         string      `json:"path"`
+	RelativePath string      `json:"relative_path"`
+	Language     string      `json:"language"`
+	Extension    string      `json:"extension"`
+	Size         int64       `json:"size"`
+	Lines        int         `json:"lines"`
+	Content      string      `json:"content,omitempty"`
+	Hash         string      `json:"hash"`
+	ModifiedAt   time.Time   `json:"modified_at"`
+	IndexedAt    time.Time   `json:"indexed_at"`
+	Functions    []Function  `json:"functions,omitempty"`
+	Classes      []Class     `json:"classes,omitempty"`
+	Variables    []Variable  `json:"variables,omitempty"`
+	Imports      []Import    `json:"imports,omitempty"`
+	Comments     []Comment   `json:"comments,omitempty"`
+	Chunks       []CodeChunk `json:"chunks,omitempty"`
+	TreeSitterAST interface{} `json:"tree_sitter_ast,omitempty"`
 }
 
 // Function represents a function or method definition

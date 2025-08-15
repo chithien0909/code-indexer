@@ -24,11 +24,32 @@ func NewRegistry() *Registry {
 		parsers: make(map[string]Parser),
 	}
 
-	// Register built-in parsers
-	registry.Register(NewGoParser())
-	registry.Register(NewPythonParser())
-	registry.Register(NewJavaScriptParser())
-	registry.Register(NewJavaParser())
+	// Register tree-sitter parsers first (higher priority)
+	if tsGo := NewTreeSitterParser("go"); tsGo != nil {
+		registry.Register(tsGo)
+	} else {
+		registry.Register(NewGoParser())
+	}
+
+	if tsPython := NewTreeSitterParser("python"); tsPython != nil {
+		registry.Register(tsPython)
+	} else {
+		registry.Register(NewPythonParser())
+	}
+
+	if tsJS := NewTreeSitterParser("javascript"); tsJS != nil {
+		registry.Register(tsJS)
+	} else {
+		registry.Register(NewJavaScriptParser())
+	}
+
+	if tsJava := NewTreeSitterParser("java"); tsJava != nil {
+		registry.Register(tsJava)
+	} else {
+		registry.Register(NewJavaParser())
+	}
+
+	// Register generic parser as fallback
 	registry.Register(NewGenericParser())
 
 	return registry

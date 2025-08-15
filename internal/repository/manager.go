@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	gitignore "github.com/sabhiram/go-gitignore"
 	"go.uber.org/zap"
 
 	"github.com/my-mcp/code-indexer/pkg/types"
@@ -19,8 +21,9 @@ import (
 
 // Manager handles Git repository operations and file discovery
 type Manager struct {
-	repoDir string
-	logger  *zap.Logger
+	repoDir     string
+	logger      *zap.Logger
+	gitignores  map[string]*gitignore.GitIgnore // Cache gitignore patterns per repository
 }
 
 // NewManager creates a new repository manager
@@ -30,8 +33,9 @@ func NewManager(repoDir string, logger *zap.Logger) (*Manager, error) {
 	}
 
 	return &Manager{
-		repoDir: repoDir,
-		logger:  logger,
+		repoDir:    repoDir,
+		logger:     logger,
+		gitignores: make(map[string]*gitignore.GitIgnore),
 	}, nil
 }
 
@@ -152,6 +156,7 @@ func (m *Manager) getRepositoryInfo(repoPath, repoURL, customName string) (*type
 		// Get current branch
 		if head, err := gitRepo.Head(); err == nil {
 			repo.Branch = head.Name().Short()
+			repo.LastIndexedHash = head.Hash().String()
 		}
 
 		// Get latest commit
@@ -160,6 +165,14 @@ func (m *Manager) getRepositoryInfo(repoPath, repoURL, customName string) (*type
 				repo.LastCommit = commit.Hash.String()[:8]
 			}
 		}
+
+		// Get submodules
+		if submodules, err := m.GetSubmodules(repoPath); err == nil {
+			repo.Submodules = submodules
+		}
+
+		// Set indexing mode
+		repo.IndexingMode = "full"
 	}
 
 	return repo, nil
@@ -200,7 +213,16 @@ func (m *Manager) WalkFiles(ctx context.Context, repoPath string, callback func(
 
 		// Skip directories
 		if d.IsDir() {
+			// Check if directory should be ignored by gitignore
+			if m.isIgnoredByGit(path, repoPath) {
+				return filepath.SkipDir
+			}
 			return nil
+		}
+
+		// Check if file should be ignored by gitignore
+		if m.isIgnoredByGit(path, repoPath) {
+			return nil // Skip this file
 		}
 
 		// Get file info
@@ -289,4 +311,181 @@ func (m *Manager) ValidateRepository(path string) error {
 
 	// Even if it's not a Git repository, we can still index it
 	return nil
+}
+
+// loadGitignore loads and caches gitignore patterns for a repository
+func (m *Manager) loadGitignore(repoPath string) *gitignore.GitIgnore {
+	if gi, exists := m.gitignores[repoPath]; exists {
+		return gi
+	}
+
+	gitignorePath := filepath.Join(repoPath, ".gitignore")
+	if _, err := os.Stat(gitignorePath); os.IsNotExist(err) {
+		// No .gitignore file, create empty gitignore
+		m.gitignores[repoPath] = gitignore.CompileIgnoreLines()
+		return m.gitignores[repoPath]
+	}
+
+	gi, err := gitignore.CompileIgnoreFile(gitignorePath)
+	if err != nil {
+		m.logger.Warn("Failed to load .gitignore file", zap.String("path", gitignorePath), zap.Error(err))
+		gi = gitignore.CompileIgnoreLines()
+	}
+
+	m.gitignores[repoPath] = gi
+	return gi
+}
+
+// isIgnoredByGit checks if a file should be ignored according to .gitignore rules
+func (m *Manager) isIgnoredByGit(filePath, repoPath string) bool {
+	gi := m.loadGitignore(repoPath)
+
+	// Get relative path from repository root
+	relPath, err := filepath.Rel(repoPath, filePath)
+	if err != nil {
+		return false
+	}
+
+	return gi.MatchesPath(relPath)
+}
+
+// GetSubmodules returns information about Git submodules in a repository
+func (m *Manager) GetSubmodules(repoPath string) ([]types.Submodule, error) {
+	var submodules []types.Submodule
+
+	// Check for .gitmodules file first (don't require git repo for testing)
+	gitmodulesPath := filepath.Join(repoPath, ".gitmodules")
+	if _, err := os.Stat(gitmodulesPath); os.IsNotExist(err) {
+		return submodules, nil // No submodules
+	}
+
+	// Read .gitmodules file
+	content, err := os.ReadFile(gitmodulesPath)
+	if err != nil {
+		return submodules, fmt.Errorf("failed to read .gitmodules: %w", err)
+	}
+
+	m.logger.Debug("Reading .gitmodules content", zap.String("content", string(content)))
+
+	// Parse .gitmodules content (simplified parsing)
+	lines := strings.Split(string(content), "\n")
+	var currentSubmodule *types.Submodule
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "[submodule ") {
+			if currentSubmodule != nil {
+				submodules = append(submodules, *currentSubmodule)
+			}
+			// Extract name from [submodule "name"]
+			start := strings.Index(line, `"`)
+			end := strings.LastIndex(line, `"`)
+			if start != -1 && end != -1 && start < end {
+				name := line[start+1 : end]
+				currentSubmodule = &types.Submodule{Name: name}
+			}
+		} else if currentSubmodule != nil && strings.Contains(line, " = ") {
+			parts := strings.SplitN(line, " = ", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				switch key {
+				case "path":
+					currentSubmodule.Path = value
+				case "url":
+					currentSubmodule.URL = value
+				case "branch":
+					currentSubmodule.Branch = value
+				}
+			}
+		}
+	}
+
+	if currentSubmodule != nil {
+		submodules = append(submodules, *currentSubmodule)
+	}
+
+	return submodules, nil
+}
+
+// GetCommitHistory returns recent commit history for incremental indexing
+func (m *Manager) GetCommitHistory(repoPath string, fromCommit string, limit int) ([]types.CommitInfo, error) {
+	var commits []types.CommitInfo
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return commits, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	// Get HEAD reference
+	ref, err := repo.Head()
+	if err != nil {
+		return commits, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	// Get commit iterator
+	commitIter, err := repo.Log(&git.LogOptions{From: ref.Hash()})
+	if err != nil {
+		return commits, fmt.Errorf("failed to get commit log: %w", err)
+	}
+	defer commitIter.Close()
+
+	count := 0
+	foundStart := fromCommit == ""
+
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		if !foundStart {
+			if c.Hash.String() == fromCommit {
+				foundStart = true
+			}
+			return nil
+		}
+
+		if count >= limit {
+			return fmt.Errorf("limit reached") // Use error to break iteration
+		}
+
+		commitInfo := types.CommitInfo{
+			Hash:    c.Hash.String(),
+			Message: c.Message,
+			Author:  c.Author.Name,
+			Email:   c.Author.Email,
+			Date:    c.Author.When,
+		}
+
+		// Get files changed in this commit
+		if c.NumParents() > 0 {
+			parent, err := c.Parent(0)
+			if err == nil {
+				parentTree, err := parent.Tree()
+				if err == nil {
+					currentTree, err := c.Tree()
+					if err == nil {
+						changes, err := parentTree.Diff(currentTree)
+						if err == nil {
+							for _, change := range changes {
+								from, to := change.From, change.To
+								if from.Name != "" {
+									commitInfo.Files = append(commitInfo.Files, from.Name)
+								}
+								if to.Name != "" && from.Name != to.Name {
+									commitInfo.Files = append(commitInfo.Files, to.Name)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		commits = append(commits, commitInfo)
+		count++
+		return nil
+	})
+
+	if err != nil && err.Error() != "limit reached" {
+		return commits, fmt.Errorf("failed to iterate commits: %w", err)
+	}
+
+	return commits, nil
 }

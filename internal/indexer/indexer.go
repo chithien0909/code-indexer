@@ -11,6 +11,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/my-mcp/code-indexer/internal/chunking"
 	"github.com/my-mcp/code-indexer/internal/config"
 	"github.com/my-mcp/code-indexer/internal/parser"
 	"github.com/my-mcp/code-indexer/internal/repository"
@@ -24,16 +25,21 @@ type Indexer struct {
 	repoMgr    *repository.Manager
 	searcher   *search.Engine
 	parser     *parser.Registry
+	chunker    *chunking.Chunker
 	logger     *zap.Logger
 }
 
 // New creates a new indexer instance
 func New(cfg *config.Config, repoMgr *repository.Manager, searcher *search.Engine, logger *zap.Logger) (*Indexer, error) {
+	// Initialize chunker with default config for now
+	chunkingConfig := chunking.DefaultChunkingConfig()
+
 	return &Indexer{
 		config:   cfg,
 		repoMgr:  repoMgr,
 		searcher: searcher,
 		parser:   parser.NewRegistry(),
+		chunker:  chunking.NewChunker(chunkingConfig),
 		logger:   logger,
 	}, nil
 }
@@ -204,6 +210,10 @@ func (i *Indexer) indexFile(ctx context.Context, filePath string, repo *types.Re
 	if codeFile.Lines == 0 {
 		codeFile.Lines = strings.Count(string(content), "\n") + 1
 	}
+
+	// Create semantic chunks for the file
+	chunks := i.chunker.ChunkFile(codeFile)
+	codeFile.Chunks = chunks
 
 	// Index the file in the search engine
 	if err := i.searcher.IndexFile(ctx, codeFile, repo); err != nil {

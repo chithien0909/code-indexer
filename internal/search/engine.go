@@ -25,7 +25,7 @@ type Engine struct {
 // Document represents a searchable document in the index
 type Document struct {
 	ID           string                 `json:"id"`
-	Type         string                 `json:"type"` // "file", "function", "class", "variable", "comment"
+	Type         string                 `json:"type"` // "file", "function", "class", "variable", "comment", "chunk"
 	RepositoryID string                 `json:"repository_id"`
 	Repository   string                 `json:"repository"`
 	FilePath     string                 `json:"file_path"`
@@ -226,6 +226,30 @@ func (e *Engine) IndexFile(ctx context.Context, file *types.CodeFile, repo *type
 			IndexedAt: time.Now(),
 		}
 		batch.Index(commentDoc.ID, commentDoc)
+	}
+
+	// Index chunks
+	for _, chunk := range file.Chunks {
+		chunkDoc := Document{
+			ID:           fmt.Sprintf("chunk:%s:%s:%s:%d", repo.ID, file.RelativePath, chunk.ID, chunk.StartLine),
+			Type:         "chunk",
+			RepositoryID: repo.ID,
+			Repository:   repo.Name,
+			FilePath:     file.RelativePath,
+			Language:     file.Language,
+			Name:         chunk.Name,
+			Content:      chunk.Content,
+			StartLine:    chunk.StartLine,
+			EndLine:      chunk.EndLine,
+			Metadata: map[string]interface{}{
+				"chunk_type":    chunk.Type,
+				"chunk_id":      chunk.ID,
+				"context":       chunk.Context,
+				"dependencies":  chunk.Dependencies,
+			},
+			IndexedAt: time.Now(),
+		}
+		batch.Index(chunkDoc.ID, chunkDoc)
 	}
 
 	// Execute the batch
