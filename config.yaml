@@ -62,10 +62,10 @@ indexer:
     - "*.min.css"
 
   # Index storage directory
-  index_dir: "./home/hp/Documents/personal/my-mcp/index"
+  index_dir: "$(pwd)/index"
 
   # Repository storage directory for cloned repos
-  repo_dir: "/home/hp/Documents/personal/my-mcp/repositories"
+  repo_dir: "$(pwd)/repositories"
 
 search:
   # Maximum number of search results to return
@@ -83,12 +83,36 @@ search:
 server:
   # Server name for MCP protocol
   name: "Code Indexer"
-  
+
   # Server version
-  version: "1.0.0"
+  version: "1.1.0"
 
   # Enable recovery middleware for panic handling
   enable_recovery: true
+
+  # Multi-IDE support configuration
+  multi_ide:
+    enabled: true
+    max_connections: 50
+    connection_timeout_seconds: 300  # 5 minutes
+    cleanup_interval_minutes: 5
+    transport_types: ["http", "websocket"]
+
+    resource_management:
+      isolation_mode: "workspace"  # shared, workspace, full
+      max_concurrent_operations: 10
+      operation_timeout_minutes: 5
+      enable_operation_queue: true
+
+    locking:
+      enable_fine_grained_locks: true
+      lock_timeout_seconds: 30
+      enable_deadlock_detection: true
+
+    monitoring:
+      enable_metrics: true
+      log_connections: true
+      performance_tracking: true
 
 logging:
   # Log level: debug, info, warn, error

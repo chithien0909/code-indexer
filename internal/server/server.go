@@ -15,7 +15,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/my-mcp/code-indexer/internal/config"
+	"github.com/my-mcp/code-indexer/internal/connection"
 	"github.com/my-mcp/code-indexer/internal/indexer"
+	"github.com/my-mcp/code-indexer/internal/locking"
 	"github.com/my-mcp/code-indexer/internal/models"
 	"github.com/my-mcp/code-indexer/internal/repository"
 	"github.com/my-mcp/code-indexer/internal/search"
@@ -24,16 +26,18 @@ import (
 
 // MCPServer wraps the MCP server with our application logic
 type MCPServer struct {
-	server         *server.MCPServer
-	config         *config.Config
-	logger         *zap.Logger
-	indexer        *indexer.Indexer
-	repoMgr        *repository.Manager
-	searcher       *search.Engine
-	modelsEngine   *models.Engine
-	sessionManager *session.Manager
-	sessionContext *session.SessionContext
-	mutex          sync.RWMutex
+	server            *server.MCPServer
+	config            *config.Config
+	logger            *zap.Logger
+	indexer           *indexer.Indexer
+	repoMgr           *repository.Manager
+	searcher          *search.Engine
+	modelsEngine      *models.Engine
+	sessionManager    *session.Manager
+	sessionContext    *session.SessionContext
+	connectionManager *connection.Manager
+	lockManager       *locking.Manager
+	mutex             sync.RWMutex
 }
 
 // New creates a new MCP server instance
@@ -85,16 +89,43 @@ func New(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 			zap.Bool("isolate_workspaces", cfg.Server.MultiSession.IsolateWorkspaces))
 	}
 
+	// Create connection manager if multi-IDE is enabled
+	var connectionManager *connection.Manager
+	if cfg.Server.MultiIDE.Enabled {
+		connectionManager = connection.NewManager(cfg, sessionManager, logger)
+		logger.Info("Multi-IDE support enabled",
+			zap.Int("max_connections", cfg.Server.MultiIDE.MaxConnections),
+			zap.String("isolation_mode", cfg.Server.MultiIDE.ResourceManagement.IsolationMode))
+	}
+
+	// Create lock manager if fine-grained locking is enabled
+	var lockManager *locking.Manager
+	if cfg.Server.MultiIDE.Enabled && cfg.Server.MultiIDE.Locking.EnableFineGrainedLocks {
+		lockConfig := &locking.LockConfig{
+			DefaultTimeout:      time.Duration(cfg.Server.MultiIDE.Locking.LockTimeoutSeconds) * time.Second,
+			MaxLockDuration:     5 * time.Minute,
+			CleanupInterval:     1 * time.Minute,
+			EnableDeadlockCheck: cfg.Server.MultiIDE.Locking.EnableDeadlockDetection,
+			MaxWaitQueueSize:    100,
+		}
+		lockManager = locking.NewManager(lockConfig, logger)
+		logger.Info("Resource locking enabled",
+			zap.Duration("default_timeout", lockConfig.DefaultTimeout),
+			zap.Bool("deadlock_detection", lockConfig.EnableDeadlockCheck))
+	}
+
 	s := &MCPServer{
-		server:         mcpServer,
-		config:         cfg,
-		logger:         logger,
-		indexer:        idx,
-		repoMgr:        repoMgr,
-		searcher:       searcher,
-		modelsEngine:   modelsEngine,
-		sessionManager: sessionManager,
-		sessionContext: sessionContext,
+		server:            mcpServer,
+		config:            cfg,
+		logger:            logger,
+		indexer:           idx,
+		repoMgr:           repoMgr,
+		searcher:          searcher,
+		modelsEngine:      modelsEngine,
+		sessionManager:    sessionManager,
+		sessionContext:    sessionContext,
+		connectionManager: connectionManager,
+		lockManager:       lockManager,
 	}
 
 	// Register MCP tools
@@ -103,6 +134,93 @@ func New(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 	}
 
 	return s, nil
+}
+
+// NewForUVX creates a new MCP server instance optimized for uvx execution
+func NewForUVX(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
+	// Create MCP server with uvx-optimized configuration
+	opts := []server.ServerOption{
+		server.WithToolCapabilities(true),
+	}
+
+	// Always enable recovery for stability
+	opts = append(opts, server.WithRecovery())
+
+	mcpServer := server.NewMCPServer(
+		cfg.Server.Name,
+		cfg.Server.Version,
+		opts...,
+	)
+
+	// Use relative paths that work better with uvx execution
+	repoDir := cfg.Indexer.RepoDir
+	if repoDir == "" {
+		repoDir = "./repositories"
+	}
+
+	indexDir := cfg.Indexer.IndexDir
+	if indexDir == "" {
+		indexDir = "./index"
+	}
+
+	// Initialize components with uvx-friendly paths
+	repoMgr, err := repository.NewManager(repoDir, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create repository manager: %w", err)
+	}
+
+	searcher, err := search.NewEngine(indexDir, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search engine: %w", err)
+	}
+
+	idx, err := indexer.New(cfg, repoMgr, searcher, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create indexer: %w", err)
+	}
+
+	modelsEngine, err := models.NewEngine(&cfg.Models, idx, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create models engine: %w", err)
+	}
+
+	// For uvx mode, disable multi-session and multi-IDE features for simplicity
+	// Each uvx process is isolated anyway
+	var sessionManager *session.Manager
+	var sessionContext *session.SessionContext
+	var connectionManager *connection.Manager
+	var lockManager *locking.Manager
+
+	logger.Debug("UVX mode: Multi-session and multi-IDE features disabled for process isolation")
+
+	s := &MCPServer{
+		server:            mcpServer,
+		config:            cfg,
+		logger:            logger,
+		indexer:           idx,
+		repoMgr:           repoMgr,
+		searcher:          searcher,
+		modelsEngine:      modelsEngine,
+		sessionManager:    sessionManager,
+		sessionContext:    sessionContext,
+		connectionManager: connectionManager,
+		lockManager:       lockManager,
+	}
+
+	// Register MCP tools
+	if err := s.registerTools(); err != nil {
+		return nil, fmt.Errorf("failed to register tools: %w", err)
+	}
+
+	return s, nil
+}
+
+// ServeStdio starts the MCP server using stdio transport (uvx-optimized)
+func (s *MCPServer) ServeStdio() error {
+	s.logger.Debug("Starting MCP server (stdio mode)",
+		zap.String("name", s.config.Server.Name),
+		zap.String("version", s.config.Server.Version))
+	return server.ServeStdio(s.server)
 }
 
 // Serve starts the MCP server using stdio transport
@@ -145,6 +263,20 @@ func (s *MCPServer) ServeDaemon(host string, port int) error {
 // Close gracefully shuts down the server
 func (s *MCPServer) Close() error {
 	s.logger.Info("Shutting down MCP server")
+
+	// Close connection manager if enabled
+	if s.connectionManager != nil {
+		if err := s.connectionManager.Close(); err != nil {
+			s.logger.Error("Failed to close connection manager", zap.Error(err))
+		}
+	}
+
+	// Close lock manager if enabled
+	if s.lockManager != nil {
+		if err := s.lockManager.Close(); err != nil {
+			s.logger.Error("Failed to close lock manager", zap.Error(err))
+		}
+	}
 
 	// Close session manager if enabled
 	if s.sessionManager != nil {
@@ -233,13 +365,19 @@ func (s *MCPServer) handleToolsAPI(w http.ResponseWriter, r *http.Request) {
 			"core":    5,
 			"utility": 11,
 			"project": 5,
-			"session": func() int { if s.config.Server.MultiSession.Enabled { return 3 } else { return 0 } }(),
-			"ai":      3,
+			"session": func() int {
+				if s.config.Server.MultiSession.Enabled {
+					return 3
+				} else {
+					return 0
+				}
+			}(),
+			"ai": 3,
 		},
 		"server_info": map[string]interface{}{
-			"name":           s.config.Server.Name,
-			"version":        s.config.Server.Version,
-			"multi_session":  s.config.Server.MultiSession.Enabled,
+			"name":          s.config.Server.Name,
+			"version":       s.config.Server.Version,
+			"multi_session": s.config.Server.MultiSession.Enabled,
 		},
 	}
 

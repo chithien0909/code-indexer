@@ -191,7 +191,7 @@ tail -f ~/.config/code-indexer/indexer.log
 
 - [Complete Integration Guide](CURSOR_AUGMENT_INTEGRATION.md)
 - [MCP Tools Reference](MCP_TOOLS_REFERENCE.md)
-- [Development Guide](../DEVELOPMENT.md)
+- [Development Guide](DEVELOPMENT.md)
 - [Basic Usage Examples](../examples/basic_usage.md)
 
 ### ✅ **Success Indicators**

@@ -28,28 +28,63 @@ type IndexerConfig struct {
 
 // SearchConfig represents search-specific configuration
 type SearchConfig struct {
-	MaxResults       int     `mapstructure:"max_results"`
-	HighlightSnippets bool   `mapstructure:"highlight_snippets"`
-	SnippetLength    int     `mapstructure:"snippet_length"`
-	FuzzyTolerance   float64 `mapstructure:"fuzzy_tolerance"`
+	MaxResults        int     `mapstructure:"max_results"`
+	HighlightSnippets bool    `mapstructure:"highlight_snippets"`
+	SnippetLength     int     `mapstructure:"snippet_length"`
+	FuzzyTolerance    float64 `mapstructure:"fuzzy_tolerance"`
 }
 
 // ServerConfig represents server-specific configuration
 type ServerConfig struct {
-	Name           string        `mapstructure:"name"`
-	Version        string        `mapstructure:"version"`
-	EnableRecovery bool          `mapstructure:"enable_recovery"`
+	Name           string             `mapstructure:"name"`
+	Version        string             `mapstructure:"version"`
+	EnableRecovery bool               `mapstructure:"enable_recovery"`
 	MultiSession   MultiSessionConfig `mapstructure:"multi_session"`
+	MultiIDE       MultiIDEConfig     `mapstructure:"multi_ide"`
 }
 
 // MultiSessionConfig represents multi-session configuration
 type MultiSessionConfig struct {
-	Enabled                bool          `mapstructure:"enabled"`
-	MaxSessions           int           `mapstructure:"max_sessions"`
-	SessionTimeoutMinutes int           `mapstructure:"session_timeout_minutes"`
-	CleanupIntervalMinutes int          `mapstructure:"cleanup_interval_minutes"`
-	IsolateWorkspaces     bool          `mapstructure:"isolate_workspaces"`
-	SharedIndexing        bool          `mapstructure:"shared_indexing"`
+	Enabled                bool `mapstructure:"enabled"`
+	MaxSessions            int  `mapstructure:"max_sessions"`
+	SessionTimeoutMinutes  int  `mapstructure:"session_timeout_minutes"`
+	CleanupIntervalMinutes int  `mapstructure:"cleanup_interval_minutes"`
+	IsolateWorkspaces      bool `mapstructure:"isolate_workspaces"`
+	SharedIndexing         bool `mapstructure:"shared_indexing"`
+}
+
+// MultiIDEConfig represents multi-IDE configuration
+type MultiIDEConfig struct {
+	Enabled                  bool                     `mapstructure:"enabled"`
+	MaxConnections           int                      `mapstructure:"max_connections"`
+	ConnectionTimeoutSeconds int                      `mapstructure:"connection_timeout_seconds"`
+	CleanupIntervalMinutes   int                      `mapstructure:"cleanup_interval_minutes"`
+	TransportTypes           []string                 `mapstructure:"transport_types"`
+	ResourceManagement       ResourceManagementConfig `mapstructure:"resource_management"`
+	Locking                  LockingConfig            `mapstructure:"locking"`
+	Monitoring               MonitoringConfig         `mapstructure:"monitoring"`
+}
+
+// ResourceManagementConfig represents resource management configuration
+type ResourceManagementConfig struct {
+	IsolationMode           string `mapstructure:"isolation_mode"` // shared, workspace, full
+	MaxConcurrentOperations int    `mapstructure:"max_concurrent_operations"`
+	OperationTimeoutMinutes int    `mapstructure:"operation_timeout_minutes"`
+	EnableOperationQueue    bool   `mapstructure:"enable_operation_queue"`
+}
+
+// LockingConfig represents locking configuration
+type LockingConfig struct {
+	EnableFineGrainedLocks  bool `mapstructure:"enable_fine_grained_locks"`
+	LockTimeoutSeconds      int  `mapstructure:"lock_timeout_seconds"`
+	EnableDeadlockDetection bool `mapstructure:"enable_deadlock_detection"`
+}
+
+// MonitoringConfig represents monitoring configuration
+type MonitoringConfig struct {
+	EnableMetrics       bool `mapstructure:"enable_metrics"`
+	LogConnections      bool `mapstructure:"log_connections"`
+	PerformanceTracking bool `mapstructure:"performance_tracking"`
 }
 
 // LoggingConfig represents logging configuration
@@ -63,27 +98,25 @@ type LoggingConfig struct {
 
 // ModelsConfig represents AI models configuration
 type ModelsConfig struct {
-	Enabled      bool   `mapstructure:"enabled"`
-	DefaultModel string `mapstructure:"default_model"`
-	ModelsDir    string `mapstructure:"models_dir"`
-	MaxTokens    int    `mapstructure:"max_tokens"`
+	Enabled      bool    `mapstructure:"enabled"`
+	DefaultModel string  `mapstructure:"default_model"`
+	ModelsDir    string  `mapstructure:"models_dir"`
+	MaxTokens    int     `mapstructure:"max_tokens"`
 	Temperature  float64 `mapstructure:"temperature"`
 }
 
-
-
 // PatternSearchConfig represents pattern search configuration
 type PatternSearchConfig struct {
-	MaxResults      int      `mapstructure:"max_results"`
-	TimeoutSeconds  int      `mapstructure:"timeout_seconds"`
-	SupportedTypes  []string `mapstructure:"supported_types"`
+	MaxResults     int      `mapstructure:"max_results"`
+	TimeoutSeconds int      `mapstructure:"timeout_seconds"`
+	SupportedTypes []string `mapstructure:"supported_types"`
 }
 
 // CodeSmellsConfig represents code smells detection configuration
 type CodeSmellsConfig struct {
-	DefaultSeverity     string   `mapstructure:"default_severity"`
-	EnabledSmells       []string `mapstructure:"enabled_smells"`
-	SeverityThresholds  map[string]float64 `mapstructure:"severity_thresholds"`
+	DefaultSeverity    string             `mapstructure:"default_severity"`
+	EnabledSmells      []string           `mapstructure:"enabled_smells"`
+	SeverityThresholds map[string]float64 `mapstructure:"severity_thresholds"`
 }
 
 // SecurityConfig represents security analysis configuration
@@ -109,16 +142,16 @@ type TestCoverageConfig struct {
 
 // MetricsConfig represents metrics configuration
 type MetricsConfig struct {
-	DefaultMetrics      []string `mapstructure:"default_metrics"`
-	OutputFormats       []string `mapstructure:"output_formats"`
-	IncludeTrends       bool     `mapstructure:"include_trends"`
+	DefaultMetrics []string `mapstructure:"default_metrics"`
+	OutputFormats  []string `mapstructure:"output_formats"`
+	IncludeTrends  bool     `mapstructure:"include_trends"`
 }
 
 // EvolutionConfig represents evolution analysis configuration
 type EvolutionConfig struct {
-	DefaultTimeRange    int      `mapstructure:"default_time_range"`
-	MaxCommits          int      `mapstructure:"max_commits"`
-	IncludeAuthors      bool     `mapstructure:"include_authors"`
+	DefaultTimeRange int  `mapstructure:"default_time_range"`
+	MaxCommits       int  `mapstructure:"max_commits"`
+	IncludeAuthors   bool `mapstructure:"include_authors"`
 }
 
 // PatternExtractionConfig represents pattern extraction configuration
@@ -127,8 +160,6 @@ type PatternExtractionConfig struct {
 	MinPatternSize      int     `mapstructure:"min_pattern_size"`
 	SimilarityThreshold float64 `mapstructure:"similarity_threshold"`
 }
-
-
 
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
@@ -152,10 +183,10 @@ func DefaultConfig() *Config {
 			RepoDir:  "./repositories",
 		},
 		Search: SearchConfig{
-			MaxResults:       100,
+			MaxResults:        100,
 			HighlightSnippets: true,
-			SnippetLength:    200,
-			FuzzyTolerance:   0.2,
+			SnippetLength:     200,
+			FuzzyTolerance:    0.2,
 		},
 		Server: ServerConfig{
 			Name:           "Code Indexer",
@@ -163,11 +194,34 @@ func DefaultConfig() *Config {
 			EnableRecovery: true,
 			MultiSession: MultiSessionConfig{
 				Enabled:                true,
-				MaxSessions:           10,
-				SessionTimeoutMinutes: 120, // 2 hours
+				MaxSessions:            10,
+				SessionTimeoutMinutes:  120, // 2 hours
 				CleanupIntervalMinutes: 30,  // 30 minutes
-				IsolateWorkspaces:     true,
-				SharedIndexing:        true,
+				IsolateWorkspaces:      true,
+				SharedIndexing:         true,
+			},
+			MultiIDE: MultiIDEConfig{
+				Enabled:                  true,
+				MaxConnections:           50,
+				ConnectionTimeoutSeconds: 300, // 5 minutes
+				CleanupIntervalMinutes:   5,   // 5 minutes
+				TransportTypes:           []string{"http", "websocket"},
+				ResourceManagement: ResourceManagementConfig{
+					IsolationMode:           "workspace",
+					MaxConcurrentOperations: 10,
+					OperationTimeoutMinutes: 5,
+					EnableOperationQueue:    true,
+				},
+				Locking: LockingConfig{
+					EnableFineGrainedLocks:  true,
+					LockTimeoutSeconds:      30,
+					EnableDeadlockDetection: true,
+				},
+				Monitoring: MonitoringConfig{
+					EnableMetrics:       true,
+					LogConnections:      true,
+					PerformanceTracking: true,
+				},
 			},
 		},
 		Logging: LoggingConfig{
@@ -184,7 +238,6 @@ func DefaultConfig() *Config {
 			MaxTokens:    2048,
 			Temperature:  0.7,
 		},
-
 	}
 }
 
@@ -193,7 +246,7 @@ func Load(configPath string) (*Config, error) {
 	config := DefaultConfig()
 
 	viper.SetConfigType("yaml")
-	
+
 	if configPath != "" {
 		viper.SetConfigFile(configPath)
 	} else {
@@ -284,15 +337,15 @@ func (c *Config) Validate() error {
 	if c.Indexer.MaxFileSize <= 0 {
 		c.Indexer.MaxFileSize = 1048576 // 1MB default
 	}
-	
+
 	if c.Search.MaxResults <= 0 {
 		c.Search.MaxResults = 100
 	}
-	
+
 	if c.Search.SnippetLength <= 0 {
 		c.Search.SnippetLength = 200
 	}
-	
+
 	if c.Search.FuzzyTolerance < 0 || c.Search.FuzzyTolerance > 1 {
 		c.Search.FuzzyTolerance = 0.2
 	}
@@ -315,6 +368,38 @@ func (c *Config) Validate() error {
 		}
 		if c.Server.MultiSession.CleanupIntervalMinutes <= 0 {
 			c.Server.MultiSession.CleanupIntervalMinutes = 30
+		}
+	}
+
+	// Validate multi-IDE configuration
+	if c.Server.MultiIDE.Enabled {
+		if c.Server.MultiIDE.MaxConnections <= 0 {
+			c.Server.MultiIDE.MaxConnections = 50
+		}
+		if c.Server.MultiIDE.ConnectionTimeoutSeconds <= 0 {
+			c.Server.MultiIDE.ConnectionTimeoutSeconds = 300
+		}
+		if c.Server.MultiIDE.CleanupIntervalMinutes <= 0 {
+			c.Server.MultiIDE.CleanupIntervalMinutes = 5
+		}
+		if len(c.Server.MultiIDE.TransportTypes) == 0 {
+			c.Server.MultiIDE.TransportTypes = []string{"http", "websocket"}
+		}
+
+		// Validate resource management
+		if c.Server.MultiIDE.ResourceManagement.IsolationMode == "" {
+			c.Server.MultiIDE.ResourceManagement.IsolationMode = "workspace"
+		}
+		if c.Server.MultiIDE.ResourceManagement.MaxConcurrentOperations <= 0 {
+			c.Server.MultiIDE.ResourceManagement.MaxConcurrentOperations = 10
+		}
+		if c.Server.MultiIDE.ResourceManagement.OperationTimeoutMinutes <= 0 {
+			c.Server.MultiIDE.ResourceManagement.OperationTimeoutMinutes = 5
+		}
+
+		// Validate locking configuration
+		if c.Server.MultiIDE.Locking.LockTimeoutSeconds <= 0 {
+			c.Server.MultiIDE.Locking.LockTimeoutSeconds = 30
 		}
 	}
 
@@ -371,5 +456,3 @@ func (c *Config) ShouldExcludeFile(filePath string) bool {
 	}
 	return false
 }
-
-
