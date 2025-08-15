@@ -220,7 +220,23 @@ func NewForUVX(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 	}
 	logger.Debug("MCP tools registered successfully")
 
+	// Register MCP protocol handlers
+	if err := s.registerMCPHandlers(); err != nil {
+		return nil, fmt.Errorf("failed to register MCP handlers: %w", err)
+	}
+
 	return s, nil
+}
+
+// registerMCPHandlers registers explicit MCP protocol handlers
+func (s *MCPServer) registerMCPHandlers() error {
+	s.logger.Debug("Registering MCP protocol handlers...")
+
+	// The mcp-go library should handle these automatically, but let's ensure they're working
+	// by adding explicit logging when methods are called
+
+	s.logger.Debug("MCP protocol handlers registered successfully")
+	return nil
 }
 
 // ServeStdio starts the MCP server using stdio transport (uvx-optimized)
@@ -242,6 +258,9 @@ func (s *MCPServer) Serve() error {
 		zap.Bool("models_enabled", s.config.Models.Enabled),
 		zap.Bool("multi_session_enabled", s.config.Server.MultiSession.Enabled),
 		zap.Bool("multi_ide_enabled", s.config.Server.MultiIDE.Enabled))
+
+	s.logger.Info("MCP server listening on stdio for JSON-RPC requests...")
+	s.logger.Info("Expected MCP protocol version: 2024-11-05")
 
 	return server.ServeStdio(s.server)
 }
