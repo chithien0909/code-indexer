@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 import platform
+import signal
 from pathlib import Path
 from typing import List
 
