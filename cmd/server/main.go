@@ -143,7 +143,7 @@ func initLogger(cfg config.LoggingConfig) (*zap.Logger, error) {
 
 	// Create encoder
 	var encoder zapcore.Encoder
-	if cfg.JSONFormat {
+	if cfg.Format == "json" {
 		encoder = zapcore.NewJSONEncoder(encoderConfig)
 	} else {
 		encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
@@ -152,9 +152,9 @@ func initLogger(cfg config.LoggingConfig) (*zap.Logger, error) {
 
 	// Create writer syncer
 	var writeSyncer zapcore.WriteSyncer
-	if cfg.File != "" {
+	if cfg.OutputPath != "" && cfg.OutputPath != "stdout" {
 		// TODO: Add file rotation support using lumberjack
-		file, err := os.OpenFile(cfg.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(cfg.OutputPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}

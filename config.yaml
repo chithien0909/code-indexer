@@ -34,7 +34,7 @@ indexer:
     - .pl
 
   # Maximum file size to index (in bytes)
-  max_file_size: 1048576  # 1MB
+  max_file_size: 10485760  # 10MB
 
   # Patterns to exclude from indexing
   exclude_patterns:
@@ -62,10 +62,10 @@ indexer:
     - "*.min.css"
 
   # Index storage directory
-  index_dir: "./index"
+  index_dir: "./home/hp/Documents/personal/my-mcp/index"
 
   # Repository storage directory for cloned repos
-  repo_dir: "./repositories"
+  repo_dir: "/home/hp/Documents/personal/my-mcp/repositories"
 
 search:
   # Maximum number of search results to return
@@ -108,3 +108,17 @@ logging:
 
   # Maximum age in days to retain log files
   max_age: 30
+
+models:
+  # Enable AI models for code assistance
+  enabled: true
+
+  # Default model to use
+  default_model: "code-assistant-v1"
+
+  # Directory to store models
+  models_dir: "./models"
+
+  # Model parameters
+  max_tokens: 2048
+  temperature: 0.7

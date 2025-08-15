@@ -236,13 +236,24 @@ func (i *Indexer) shouldIndexFile(filePath string, info fs.FileInfo) bool {
 	}
 
 	// Check if file extension is supported
-	if !i.config.IsFileSupported(filePath) {
+	ext := filepath.Ext(filePath)
+	supportedExts := []string{".go", ".py", ".js", ".ts", ".java", ".cpp", ".c", ".h", ".rs", ".rb", ".php", ".cs", ".kt", ".swift", ".scala", ".md", ".txt", ".json", ".yaml", ".yml", ".xml", ".html", ".css", ".sql"}
+	supported := false
+	for _, supportedExt := range supportedExts {
+		if ext == supportedExt {
+			supported = true
+			break
+		}
+	}
+	if !supported {
 		return false
 	}
 
 	// Check exclude patterns
-	if i.config.ShouldExcludeFile(filePath) {
-		return false
+	for _, pattern := range i.config.Indexer.ExcludePatterns {
+		if matched, _ := filepath.Match(pattern, filePath); matched {
+			return false
+		}
 	}
 
 	return true

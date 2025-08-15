@@ -210,3 +210,144 @@ type IndexingProgress struct {
 	CompletedAt     *time.Time `json:"completed_at,omitempty"`
 	ElapsedSeconds  float64   `json:"elapsed_seconds"`
 }
+
+// ML-related types
+
+// CodeEmbedding represents a vector embedding of code
+type CodeEmbedding struct {
+	ID         string    `json:"id"`
+	FileID     string    `json:"file_id"`
+	ChunkID    string    `json:"chunk_id,omitempty"`
+	Vector     []float32 `json:"vector"`
+	Dimensions int       `json:"dimensions"`
+	Model      string    `json:"model"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// SimilarityResult represents code similarity analysis result
+type SimilarityResult struct {
+	SourceID     string  `json:"source_id"`
+	TargetID     string  `json:"target_id"`
+	Score        float64 `json:"score"`
+	Type         string  `json:"type"` // "function", "class", "file", "chunk"
+	SourceSnippet string `json:"source_snippet"`
+	TargetSnippet string `json:"target_snippet"`
+	Explanation   string `json:"explanation,omitempty"`
+}
+
+// QualityMetrics represents code quality prediction results
+type QualityMetrics struct {
+	FileID          string  `json:"file_id"`
+	Maintainability float64 `json:"maintainability"`
+	Complexity      float64 `json:"complexity"`
+	Readability     float64 `json:"readability"`
+	TestCoverage    float64 `json:"test_coverage,omitempty"`
+	Documentation   float64 `json:"documentation"`
+	OverallScore    float64 `json:"overall_score"`
+	Suggestions     []string `json:"suggestions,omitempty"`
+}
+
+// IntentClassification represents code intent classification result
+type IntentClassification struct {
+	CodeSnippet string            `json:"code_snippet"`
+	Intent      string            `json:"intent"`
+	Confidence  float64           `json:"confidence"`
+	Categories  map[string]float64 `json:"categories"`
+	Description string            `json:"description,omitempty"`
+}
+
+// CodeSummary represents AI-generated code summary
+type CodeSummary struct {
+	FileID      string   `json:"file_id"`
+	Summary     string   `json:"summary"`
+	KeyPoints   []string `json:"key_points"`
+	Functions   []string `json:"functions,omitempty"`
+	Classes     []string `json:"classes,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
+	Complexity   string   `json:"complexity"` // "low", "medium", "high"
+}
+
+// PatternDetection represents detected code patterns
+type PatternDetection struct {
+	Pattern     string   `json:"pattern"`
+	Type        string   `json:"type"` // "design_pattern", "anti_pattern", "code_smell"
+	Confidence  float64  `json:"confidence"`
+	Locations   []Location `json:"locations"`
+	Description string   `json:"description"`
+	Severity    string   `json:"severity"` // "low", "medium", "high", "critical"
+}
+
+// Location represents a location in code
+type Location struct {
+	FileID    string `json:"file_id"`
+	FilePath  string `json:"file_path"`
+	StartLine int    `json:"start_line"`
+	EndLine   int    `json:"end_line"`
+	Snippet   string `json:"snippet,omitempty"`
+}
+
+// RefactoringSuggestion represents ML-based refactoring suggestions
+type RefactoringSuggestion struct {
+	Type        string   `json:"type"` // "extract_method", "rename", "move_class", etc.
+	Priority    string   `json:"priority"` // "low", "medium", "high"
+	Confidence  float64  `json:"confidence"`
+	Location    Location `json:"location"`
+	Description string   `json:"description"`
+	Before      string   `json:"before,omitempty"`
+	After       string   `json:"after,omitempty"`
+	Benefits    []string `json:"benefits,omitempty"`
+}
+
+// BugPrediction represents potential bug prediction
+type BugPrediction struct {
+	Type        string   `json:"type"` // "null_pointer", "memory_leak", "logic_error", etc.
+	Probability float64  `json:"probability"`
+	Severity    string   `json:"severity"` // "low", "medium", "high", "critical"
+	Location    Location `json:"location"`
+	Description string   `json:"description"`
+	Suggestion  string   `json:"suggestion,omitempty"`
+}
+
+// Model-based AI Types
+
+// CodeGeneration represents AI-generated code
+type CodeGeneration struct {
+	Prompt        string                 `json:"prompt"`
+	Language      string                 `json:"language"`
+	GeneratedCode string                 `json:"generated_code"`
+	Confidence    float64                `json:"confidence"`
+	Model         string                 `json:"model"`
+	GeneratedAt   time.Time              `json:"generated_at"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// CodeAnalysis represents AI code analysis results
+type CodeAnalysis struct {
+	Code        string    `json:"code"`
+	Language    string    `json:"language"`
+	Summary     string    `json:"summary"`
+	Quality     float64   `json:"quality_score"`
+	Suggestions []string  `json:"suggestions"`
+	Issues      []string  `json:"issues"`
+	Complexity  string    `json:"complexity"`
+	Model       string    `json:"model"`
+	AnalyzedAt  time.Time `json:"analyzed_at"`
+}
+
+// CodeExplanation represents AI code explanation
+type CodeExplanation struct {
+	Code        string    `json:"code"`
+	Language    string    `json:"language"`
+	Explanation string    `json:"explanation"`
+	KeyConcepts []string  `json:"key_concepts"`
+	Purpose     string    `json:"purpose"`
+	Complexity  string    `json:"complexity"`
+	Model       string    `json:"model"`
+	ExplainedAt time.Time `json:"explained_at"`
+}
+
+
+
+
+
+

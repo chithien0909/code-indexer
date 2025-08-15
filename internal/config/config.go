@@ -14,6 +14,7 @@ type Config struct {
 	Search  SearchConfig  `mapstructure:"search"`
 	Server  ServerConfig  `mapstructure:"server"`
 	Logging LoggingConfig `mapstructure:"logging"`
+	Models  ModelsConfig  `mapstructure:"models"`
 }
 
 // IndexerConfig represents indexer-specific configuration
@@ -42,13 +43,81 @@ type ServerConfig struct {
 
 // LoggingConfig represents logging configuration
 type LoggingConfig struct {
-	Level       string `mapstructure:"level"`
-	File        string `mapstructure:"file"`
-	JSONFormat  bool   `mapstructure:"json_format"`
-	MaxSize     int    `mapstructure:"max_size"`
-	MaxBackups  int    `mapstructure:"max_backups"`
-	MaxAge      int    `mapstructure:"max_age"`
+	Level      string `mapstructure:"level"`
+	Format     string `mapstructure:"format"`
+	OutputPath string `mapstructure:"output_path"`
+	File       string `mapstructure:"file"`
+	JSONFormat bool   `mapstructure:"json_format"`
 }
+
+// ModelsConfig represents AI models configuration
+type ModelsConfig struct {
+	Enabled      bool   `mapstructure:"enabled"`
+	DefaultModel string `mapstructure:"default_model"`
+	ModelsDir    string `mapstructure:"models_dir"`
+	MaxTokens    int    `mapstructure:"max_tokens"`
+	Temperature  float64 `mapstructure:"temperature"`
+}
+
+
+
+// PatternSearchConfig represents pattern search configuration
+type PatternSearchConfig struct {
+	MaxResults      int      `mapstructure:"max_results"`
+	TimeoutSeconds  int      `mapstructure:"timeout_seconds"`
+	SupportedTypes  []string `mapstructure:"supported_types"`
+}
+
+// CodeSmellsConfig represents code smells detection configuration
+type CodeSmellsConfig struct {
+	DefaultSeverity     string   `mapstructure:"default_severity"`
+	EnabledSmells       []string `mapstructure:"enabled_smells"`
+	SeverityThresholds  map[string]float64 `mapstructure:"severity_thresholds"`
+}
+
+// SecurityConfig represents security analysis configuration
+type SecurityConfig struct {
+	EnabledChecks       []string `mapstructure:"enabled_checks"`
+	ConfidenceThreshold float64  `mapstructure:"confidence_threshold"`
+	ExcludePatterns     []string `mapstructure:"exclude_patterns"`
+}
+
+// ComplexityConfig represents complexity analysis configuration
+type ComplexityConfig struct {
+	CyclomaticThreshold int     `mapstructure:"cyclomatic_threshold"`
+	CognitiveThreshold  int     `mapstructure:"cognitive_threshold"`
+	HalsteadThreshold   float64 `mapstructure:"halstead_threshold"`
+}
+
+// TestCoverageConfig represents test coverage configuration
+type TestCoverageConfig struct {
+	MinCoverageThreshold float64  `mapstructure:"min_coverage_threshold"`
+	TestDirectories      []string `mapstructure:"test_directories"`
+	CoverageFormats      []string `mapstructure:"coverage_formats"`
+}
+
+// MetricsConfig represents metrics configuration
+type MetricsConfig struct {
+	DefaultMetrics      []string `mapstructure:"default_metrics"`
+	OutputFormats       []string `mapstructure:"output_formats"`
+	IncludeTrends       bool     `mapstructure:"include_trends"`
+}
+
+// EvolutionConfig represents evolution analysis configuration
+type EvolutionConfig struct {
+	DefaultTimeRange    int      `mapstructure:"default_time_range"`
+	MaxCommits          int      `mapstructure:"max_commits"`
+	IncludeAuthors      bool     `mapstructure:"include_authors"`
+}
+
+// PatternExtractionConfig represents pattern extraction configuration
+type PatternExtractionConfig struct {
+	MinOccurrences      int     `mapstructure:"min_occurrences"`
+	MinPatternSize      int     `mapstructure:"min_pattern_size"`
+	SimilarityThreshold float64 `mapstructure:"similarity_threshold"`
+}
+
+
 
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
@@ -84,12 +153,19 @@ func DefaultConfig() *Config {
 		},
 		Logging: LoggingConfig{
 			Level:      "info",
-			File:       "indexer.log",
-			JSONFormat: false,
-			MaxSize:    100,
-			MaxBackups: 3,
-			MaxAge:     30,
+			Format:     "json",
+			OutputPath: "stdout",
+			File:       "",
+			JSONFormat: true,
 		},
+		Models: ModelsConfig{
+			Enabled:      true,
+			DefaultModel: "code-assistant-v1",
+			ModelsDir:    "./models",
+			MaxTokens:    2048,
+			Temperature:  0.7,
+		},
+
 	}
 }
 
@@ -127,41 +203,62 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	// Validate and normalize paths
-	if err := config.validate(); err != nil {
+	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	return config, nil
 }
 
-// validate validates the configuration and normalizes paths
-func (c *Config) validate() error {
-	// Ensure directories exist or can be created
-	dirs := []string{c.Indexer.IndexDir, c.Indexer.RepoDir}
-	for _, dir := range dirs {
-		if dir == "" {
-			continue
-		}
-		
-		absDir, err := filepath.Abs(dir)
+// Validate validates the configuration and normalizes paths
+func (c *Config) Validate() error {
+	// Validate indexer configuration
+	if c.Indexer.IndexDir != "" {
+		absDir, err := filepath.Abs(c.Indexer.IndexDir)
 		if err != nil {
-			return fmt.Errorf("invalid directory path %s: %w", dir, err)
+			return fmt.Errorf("invalid indexer index directory path %s: %w", c.Indexer.IndexDir, err)
 		}
-		
 		if err := os.MkdirAll(absDir, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", absDir, err)
+			return fmt.Errorf("failed to create indexer index directory %s: %w", absDir, err)
 		}
+		c.Indexer.IndexDir = absDir
 	}
 
-	// Normalize paths
-	if c.Indexer.IndexDir != "" {
-		abs, _ := filepath.Abs(c.Indexer.IndexDir)
-		c.Indexer.IndexDir = abs
-	}
-	
 	if c.Indexer.RepoDir != "" {
-		abs, _ := filepath.Abs(c.Indexer.RepoDir)
-		c.Indexer.RepoDir = abs
+		absDir, err := filepath.Abs(c.Indexer.RepoDir)
+		if err != nil {
+			return fmt.Errorf("invalid indexer repo directory path %s: %w", c.Indexer.RepoDir, err)
+		}
+		if err := os.MkdirAll(absDir, 0755); err != nil {
+			return fmt.Errorf("failed to create indexer repo directory %s: %w", absDir, err)
+		}
+		c.Indexer.RepoDir = absDir
+	}
+
+	if c.Indexer.MaxFileSize <= 0 {
+		c.Indexer.MaxFileSize = 10 * 1024 * 1024 // 10MB default
+	}
+
+	// Validate Models configuration
+	if c.Models.Enabled {
+		if c.Models.ModelsDir != "" {
+			absDir, err := filepath.Abs(c.Models.ModelsDir)
+			if err != nil {
+				return fmt.Errorf("invalid models directory path %s: %w", c.Models.ModelsDir, err)
+			}
+			if err := os.MkdirAll(absDir, 0755); err != nil {
+				return fmt.Errorf("failed to create models directory %s: %w", absDir, err)
+			}
+			c.Models.ModelsDir = absDir
+		}
+
+		if c.Models.MaxTokens <= 0 {
+			c.Models.MaxTokens = 2048
+		}
+
+		if c.Models.Temperature < 0 || c.Models.Temperature > 2 {
+			c.Models.Temperature = 0.7
+		}
 	}
 
 	// Validate numeric values
@@ -187,6 +284,28 @@ func (c *Config) validate() error {
 	}
 	if !validLevels[c.Logging.Level] {
 		c.Logging.Level = "info"
+	}
+
+	// Validate Models configuration
+	if c.Models.Enabled {
+		if c.Models.ModelsDir != "" {
+			absDir, err := filepath.Abs(c.Models.ModelsDir)
+			if err != nil {
+				return fmt.Errorf("invalid models directory path %s: %w", c.Models.ModelsDir, err)
+			}
+			if err := os.MkdirAll(absDir, 0755); err != nil {
+				return fmt.Errorf("failed to create models directory %s: %w", absDir, err)
+			}
+			c.Models.ModelsDir = absDir
+		}
+
+		if c.Models.MaxTokens <= 0 {
+			c.Models.MaxTokens = 2048
+		}
+
+		if c.Models.Temperature < 0 || c.Models.Temperature > 2 {
+			c.Models.Temperature = 0.7
+		}
 	}
 
 	return nil
@@ -220,3 +339,5 @@ func (c *Config) ShouldExcludeFile(filePath string) bool {
 	}
 	return false
 }
+
+
