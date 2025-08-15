@@ -179,9 +179,13 @@ func NewForUVX(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 		return nil, fmt.Errorf("failed to create indexer: %w", err)
 	}
 
+	// Initialize models engine with safe defaults for uvx mode
 	modelsEngine, err := models.NewEngine(&cfg.Models, idx, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create models engine: %w", err)
+		// In uvx mode, if models engine fails to initialize, create a disabled one
+		logger.Warn("Failed to create models engine, creating disabled instance", zap.Error(err))
+		disabledConfig := &config.ModelsConfig{Enabled: false}
+		modelsEngine, _ = models.NewEngine(disabledConfig, idx, logger)
 	}
 
 	// For uvx mode, disable multi-session and multi-IDE features for simplicity
@@ -208,9 +212,11 @@ func NewForUVX(cfg *config.Config, logger *zap.Logger) (*MCPServer, error) {
 	}
 
 	// Register MCP tools
+	logger.Debug("Registering MCP tools...")
 	if err := s.registerTools(); err != nil {
 		return nil, fmt.Errorf("failed to register tools: %w", err)
 	}
+	logger.Debug("MCP tools registered successfully")
 
 	return s, nil
 }
