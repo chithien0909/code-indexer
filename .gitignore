@@ -43,6 +43,7 @@ config.local.yaml
 /bin/
 /dist/
 /build/
+python/mcp_code_indexer/bin/
 
 # Temporary files
 *.tmp
