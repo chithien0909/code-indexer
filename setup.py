@@ -42,7 +42,7 @@ setup(
         ]
     },
     python_requires=">=3.8",
-    install_requires=[],
+    install_requires=["requests>=2.25.0"],
     zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",

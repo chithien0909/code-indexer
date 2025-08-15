@@ -125,41 +125,10 @@ func runMCPServer() error {
 		return fmt.Errorf("failed to create MCP server: %w", err)
 	}
 
-	// Setup graceful shutdown (simplified for uvx)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	logger.Info("MCP server ready, starting stdio communication...")
 
-	// Handle shutdown signals
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigChan
-		logger.Debug("Received shutdown signal", zap.String("signal", sig.String()))
-		cancel()
-	}()
-
-	// Start server in a goroutine
-	serverErr := make(chan error, 1)
-	go func() {
-		serverErr <- mcpServer.ServeStdio()
-	}()
-
-	// Wait for shutdown signal or server error
-	select {
-	case <-ctx.Done():
-		logger.Debug("Shutting down MCP server...")
-		if err := mcpServer.Close(); err != nil {
-			logger.Error("Error during server shutdown", zap.Error(err))
-		}
-		return nil
-	case err := <-serverErr:
-		if err != nil {
-			logger.Error("MCP server error", zap.Error(err))
-			return err
-		}
-		return nil
-	}
+	// Start server directly for better stdio handling
+	return mcpServer.ServeStdio()
 }
 
 func versionCmd() *cobra.Command {
