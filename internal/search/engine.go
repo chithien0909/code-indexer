@@ -45,15 +45,14 @@ func NewEngine(indexDir string, logger *zap.Logger) (*Engine, error) {
 
 	// Open or create the index
 	index, err := bleve.Open(indexDir)
-	if err == bleve.ErrorIndexPathDoesNotExist {
-		// Create new index
+	if err != nil {
+		// If index doesn't exist or has issues, create a new one
+		logger.Info("Index not found or corrupted, creating new index", zap.String("path", indexDir), zap.Error(err))
 		index, err = bleve.New(indexDir, indexMapping)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create search index: %w", err)
 		}
 		logger.Info("Created new search index", zap.String("path", indexDir))
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to open search index: %w", err)
 	} else {
 		logger.Info("Opened existing search index", zap.String("path", indexDir))
 	}

@@ -132,6 +132,25 @@ Get detailed metadata for a specific file.
 ### list_repositories
 List all indexed repositories with statistics.
 
+## IDE Integration
+
+### Cursor/Augment IDE Setup
+
+For detailed integration with Cursor or Augment IDE:
+
+1. **Quick Setup:**
+   ```bash
+   ./scripts/setup-cursor-integration.sh
+   ```
+
+2. **Manual Setup:** See [Cursor/Augment Integration Guide](docs/CURSOR_AUGMENT_INTEGRATION.md)
+
+3. **Tool Reference:** See [MCP Tools Quick Reference](docs/MCP_TOOLS_REFERENCE.md)
+
+### Other IDEs
+
+The MCP Code Indexer can work with any IDE that supports the Model Context Protocol. Configuration will vary by IDE.
+
 ## Development
 
 ### Building from Source
@@ -139,14 +158,29 @@ List all indexed repositories with statistics.
 ```bash
 git clone https://github.com/my-mcp/code-indexer.git
 cd code-indexer
-go build -o code-indexer ./cmd/server
+make build
 ```
 
 ### Running Tests
 
 ```bash
-go test ./...
+make test
 ```
+
+### Development Setup
+
+```bash
+make dev-setup
+```
+
+For detailed development information, see [Development Guide](DEVELOPMENT.md).
+
+## Documentation
+
+- [Integration Guide](docs/CURSOR_AUGMENT_INTEGRATION.md) - Cursor/Augment IDE setup
+- [Tools Reference](docs/MCP_TOOLS_REFERENCE.md) - Quick reference for all MCP tools
+- [Development Guide](DEVELOPMENT.md) - Contributing and extending the codebase
+- [Basic Usage](examples/basic_usage.md) - Usage examples and patterns
 
 ## License
 
